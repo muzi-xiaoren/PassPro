@@ -1,0 +1,40 @@
+name: passman_pro
+description: 跨平台本地密码管理器，兼容旧 Python Fernet 加密文件，支持 GitHub/Gitee 双仓库同步。
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.4.0
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # 加密：手写 Fernet 兼容算法，仅依赖基础原语
+  crypto: ^3.0.3            # SHA-256 / HMAC
+  pointycastle: ^3.9.1      # AES-CBC + PKCS7
+
+  # 存储 & 路径
+  path: ^1.9.0
+  path_provider: ^2.1.3     # 各平台 app 数据目录
+
+  # 安全凭据（PAT 存 OS Keychain）
+  flutter_secure_storage: ^9.2.2
+
+  # 本地设置持久化
+  shared_preferences: ^2.2.3
+
+  # HTTP（同步用，GitHub/Gitee REST API）
+  http: ^1.2.1
+
+  # UI 状态管理（轻量）
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
