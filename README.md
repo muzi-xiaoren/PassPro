@@ -1,5 +1,7 @@
 # Passman Pro (PassPro)
 
+**中文** | [English](README.en.md)
+
 跨平台本地密码管理器，重构自 `password_manager` 项目（Python/Tkinter → Flutter）。
 
 ![Build](https://github.com/muzi-xiaoren/PassPro/actions/workflows/build.yml/badge.svg)
