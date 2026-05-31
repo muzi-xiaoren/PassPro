@@ -113,16 +113,28 @@ flutter build macos --release      # build/macos/Build/Products/Release/passman_
 ## 数据迁移（从旧 Python 版本）
 
 旧版数据在 `~/password_person/passwords.txt`，每行格式 `website,username,encrypted_password`。
-新版日志格式不同（JSON Lines），但 **加密算法完全相同**，所以可以写一个一次性迁移脚本：
+新版日志格式不同（JSON Lines），但 **加密算法完全相同**，密文字段直接复制即可，
+无需解密重加密。一次性迁移脚本已就绪：`tools/migrate_from_old.py`。
 
-```python
-# tools/migrate_from_old.py（待补）
-# 读旧 txt → 转成新 JSON Lines（op=ADD, id=随机, ts=now, w/u/p 直接复制）
+```bash
+# 预览（不写文件），默认读 ~/password_person/passwords.txt
+python3 tools/migrate_from_old.py --dry-run
+
+# 生成新日志（默认输出当前目录 ./passwords.log），自动去重完全相同的条目
+python3 tools/migrate_from_old.py
+
+# 指定输入 / 输出
+python3 tools/migrate_from_old.py --in /path/old.txt --out /path/passwords.log
 ```
 
+生成 `passwords.log` 后，放到 App 数据目录（建议在 App 从未写入数据时操作，避免覆盖）。
+
 新版日志位置：
-- macOS: `~/Library/Application Support/passman_pro/passwords.log`
-- Windows: `%APPDATA%\passman_pro\passwords.log`
+- macOS: `~/Library/Application Support/PassPro/passwords.log`
+  （path_provider 在 macOS 上可能嵌套 bundle id，实际可能是
+  `~/Library/Application Support/<bundle-id>/PassPro/passwords.log`，迁移前先启动一次 App 确认真实路径）
+- Windows: `%APPDATA%\PassPro\passwords.log`
+- Linux: `~/.local/share/PassPro/passwords.log`
 - Android: app 私有目录（不可直接访问）
 
 ## 同步配置（GitHub + Gitee）

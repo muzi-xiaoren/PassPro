@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/password_entry.dart';
 
 /// 负责把 [LogRecord] 行追加 / 读取到磁盘日志文件。
-/// 物理路径：<app_support_dir>/passman_pro/passwords.log
+/// 物理路径：<app_support_dir>/PassPro/passwords.log
 class LogStore {
   LogStore._(this._file);
 
@@ -14,7 +14,7 @@ class LogStore {
 
   static Future<LogStore> open() async {
     final base = await getApplicationSupportDirectory();
-    final dir = Directory(p.join(base.path, 'passman_pro'));
+    final dir = Directory(p.join(base.path, 'PassPro'));
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
