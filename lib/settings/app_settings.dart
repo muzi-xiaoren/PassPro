@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show Locale;
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -57,17 +58,21 @@ class BackendConfig {
       };
 
   static BackendConfig fromJson(Map<String, Object?> j) {
+    final kind = BackendKind.values.firstWhere((e) => e.name == j['kind']);
     return BackendConfig(
-      kind: BackendKind.values.firstWhere((e) => e.name == j['kind']),
+      kind: kind,
       enabled: j['enabled'] as bool? ?? false,
       role: BackendRole.values
           .firstWhere((e) => e.name == (j['role'] ?? 'primary')),
       owner: j['owner'] as String? ?? '',
       repo: j['repo'] as String? ?? '',
-      branch: j['branch'] as String? ?? 'main',
+      branch: j['branch'] as String? ?? defaultBranchFor(kind),
       filePath: j['filePath'] as String? ?? 'passwords.log',
     );
   }
+
+  static String defaultBranchFor(BackendKind kind) =>
+      kind == BackendKind.gitee ? 'master' : 'main';
 }
 
 class AppSettings extends ChangeNotifier {
@@ -79,6 +84,7 @@ class AppSettings extends ChangeNotifier {
   static const _kSmartSkip = 'smart_skip';
   static const _kBackendGithub = 'backend_github_json';
   static const _kBackendGitee = 'backend_gitee_json';
+  static const _kLocale = 'locale_code';
 
   final SharedPreferences _prefs;
 
@@ -92,6 +98,12 @@ class AppSettings extends ChangeNotifier {
   bool get promptAfterEdit => _prefs.getBool(_kPromptAfterEdit) ?? true;
   bool get smartSkip => _prefs.getBool(_kSmartSkip) ?? true;
 
+  /// 界面语言代码：'' 表示跟随系统，否则如 'en' / 'zh' / 'ja' / 'ko' / 'fr' / 'ru' / 'de'。
+  String get localeCode => _prefs.getString(_kLocale) ?? '';
+
+  /// 供 MaterialApp.locale 使用；null = 跟随系统。
+  Locale? get locale => localeCode.isEmpty ? null : Locale(localeCode);
+
   BackendConfig get github => _loadBackend(_kBackendGithub, BackendKind.github);
   BackendConfig get gitee => _loadBackend(_kBackendGitee, BackendKind.gitee);
 
@@ -103,6 +115,7 @@ class AppSettings extends ChangeNotifier {
         role: kind == BackendKind.github
             ? BackendRole.primary
             : BackendRole.mirror,
+        branch: BackendConfig.defaultBranchFor(kind),
       );
     }
     try {
@@ -146,6 +159,16 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setSmartSkip(bool v) async {
     await _prefs.setBool(_kSmartSkip, v);
+    notifyListeners();
+  }
+
+  /// 设置界面语言；传空字符串表示跟随系统。
+  Future<void> setLocale(String code) async {
+    if (code.isEmpty) {
+      await _prefs.remove(_kLocale);
+    } else {
+      await _prefs.setString(_kLocale, code);
+    }
     notifyListeners();
   }
 

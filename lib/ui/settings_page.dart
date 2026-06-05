@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
+import '../l10n/app_localizations.dart';
 import '../settings/app_settings.dart';
 import '../sync/git_backend.dart';
 import '../sync/sync_backend.dart';
@@ -12,15 +13,41 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<AppSettings>();
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+      appBar: AppBar(title: Text(l10n.settings)),
       body: ListView(
         children: [
+          // ============ 语言 ============
+          _SectionHeader(l10n.sectionLanguage),
+          ListTile(
+            leading: const Icon(Icons.language),
+            title: Text(l10n.language),
+            trailing: DropdownButton<String>(
+              value: settings.localeCode,
+              underline: const SizedBox.shrink(),
+              onChanged: (code) {
+                if (code != null) settings.setLocale(code);
+              },
+              items: [
+                DropdownMenuItem(value: '', child: Text(l10n.followSystem)),
+                const DropdownMenuItem(value: 'zh', child: Text('简体中文')),
+                const DropdownMenuItem(value: 'en', child: Text('English')),
+                const DropdownMenuItem(value: 'ja', child: Text('日本語')),
+                const DropdownMenuItem(value: 'ko', child: Text('한국어')),
+                const DropdownMenuItem(value: 'fr', child: Text('Français')),
+                const DropdownMenuItem(value: 'ru', child: Text('Русский')),
+                const DropdownMenuItem(value: 'de', child: Text('Deutsch')),
+              ],
+            ),
+          ),
+
+          const Divider(),
           // ============ 云同步 ============
-          const _SectionHeader('云同步'),
+          _SectionHeader(l10n.sectionCloudSync),
           SwitchListTile(
-            title: const Text('启用云同步'),
-            subtitle: const Text('关闭后所有数据仅保留在本机'),
+            title: Text(l10n.enableCloudSync),
+            subtitle: Text(l10n.enableCloudSyncSub),
             value: settings.cloudEnabled,
             onChanged: settings.setCloudEnabled,
           ),
@@ -28,21 +55,21 @@ class SettingsPage extends StatelessWidget {
             _BackendTile(kind: BackendKind.github),
             _BackendTile(kind: BackendKind.gitee),
             const Divider(),
-            const _SectionHeader('同步提示'),
+            _SectionHeader(l10n.sectionSyncPrompt),
             SwitchListTile(
-              title: const Text('操作前提示拉取'),
-              subtitle: const Text('新增/修改/删除前先弹出"拉取远端"提示'),
+              title: Text(l10n.promptBeforePull),
+              subtitle: Text(l10n.promptBeforePullSub),
               value: settings.promptBeforeEdit,
               onChanged: settings.setPromptBeforeEdit,
             ),
             SwitchListTile(
-              title: const Text('操作后提示推送'),
+              title: Text(l10n.promptAfterPush),
               value: settings.promptAfterEdit,
               onChanged: settings.setPromptAfterEdit,
             ),
             SwitchListTile(
-              title: const Text('智能跳过'),
-              subtitle: const Text('远端无更新时自动跳过"拉取"提示'),
+              title: Text(l10n.smartSkip),
+              subtitle: Text(l10n.smartSkipSub),
               value: settings.smartSkip,
               onChanged: settings.setSmartSkip,
             ),
@@ -50,20 +77,20 @@ class SettingsPage extends StatelessWidget {
 
           const Divider(),
           // ============ 维护 ============
-          const _SectionHeader('维护'),
+          _SectionHeader(l10n.sectionMaintenance),
           ListTile(
             leading: const Icon(Icons.compress),
-            title: const Text('立即整理日志'),
+            title: Text(l10n.compactNow),
             subtitle: const _CompactionSubtitle(),
             onTap: () => _runCompaction(context),
           ),
 
           const Divider(),
-          const _SectionHeader('关于'),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('Passman Pro'),
-            subtitle: Text('版本 0.1.0  ·  Fernet 兼容旧版加密文件'),
+          _SectionHeader(l10n.sectionAbout),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('PassPro'),
+            subtitle: Text(l10n.aboutSubtitle),
           ),
         ],
       ),
@@ -71,6 +98,7 @@ class SettingsPage extends StatelessWidget {
   }
 
   Future<void> _runCompaction(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     final app = context.read<AppState>();
     if (app.settings.cloudEnabled) {
       // 协议：先 pull 再 compact 再 push
@@ -84,7 +112,7 @@ class SettingsPage extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '已整理：${report.activeRecords} 条有效记录，节省 ${_humanBytes(saved)}',
+          l10n.compactDone(report.activeRecords, _humanBytes(saved)),
         ),
       ),
     );
@@ -125,9 +153,10 @@ class _CompactionSubtitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final l10n = AppLocalizations.of(context)!;
     final ix = app.vault.index;
     final amp = ix.amplification.toStringAsFixed(2);
-    return Text('当前 ${ix.activeCount} 条有效 / ${ix.totalLineCount} 行（放大率 $amp×）');
+    return Text(l10n.compactionStatus(ix.activeCount, ix.totalLineCount, amp));
   }
 }
 
@@ -143,6 +172,7 @@ class _BackendTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<AppSettings>();
+    final l10n = AppLocalizations.of(context)!;
     final cfg = kind == BackendKind.github ? settings.github : settings.gitee;
 
     return Card(
@@ -155,7 +185,7 @@ class _BackendTile extends StatelessWidget {
         subtitle: Text(
           cfg.enabled
               ? '${cfg.role == BackendRole.primary ? "Primary" : "Mirror"} · ${cfg.owner}/${cfg.repo}'
-              : '未启用',
+              : l10n.backendDisabled,
         ),
         children: [
           Padding(
@@ -187,6 +217,7 @@ class _BackendFormState extends State<_BackendForm> {
   bool _patChanged = false;
   bool _testing = false;
   String? _testMessage;
+  bool _testFailed = false;
 
   @override
   void initState() {
@@ -220,13 +251,16 @@ class _BackendFormState extends State<_BackendForm> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context)!;
     final app = context.read<AppState>();
     final updated = widget.initial.copyWith(
       enabled: _enabled,
       role: _role,
       owner: _owner.text.trim(),
       repo: _repo.text.trim(),
-      branch: _branch.text.trim().isEmpty ? 'main' : _branch.text.trim(),
+      branch: _branch.text.trim().isEmpty
+          ? BackendConfig.defaultBranchFor(widget.initial.kind)
+          : _branch.text.trim(),
       filePath: _filePath.text.trim().isEmpty
           ? 'passwords.log'
           : _filePath.text.trim(),
@@ -237,11 +271,12 @@ class _BackendFormState extends State<_BackendForm> {
     }
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已保存')),
+      SnackBar(content: Text(l10n.saved)),
     );
   }
 
   Future<void> _test() async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() {
       _testing = true;
       _testMessage = null;
@@ -256,7 +291,9 @@ class _BackendFormState extends State<_BackendForm> {
       role: _role,
       owner: _owner.text.trim(),
       repo: _repo.text.trim(),
-      branch: _branch.text.trim().isEmpty ? 'main' : _branch.text.trim(),
+      branch: _branch.text.trim().isEmpty
+          ? BackendConfig.defaultBranchFor(widget.initial.kind)
+          : _branch.text.trim(),
       filePath: _filePath.text.trim().isEmpty
           ? 'passwords.log'
           : _filePath.text.trim(),
@@ -264,13 +301,23 @@ class _BackendFormState extends State<_BackendForm> {
     try {
       final backend = GitBackend(config: cfg, pat: pat);
       final v = await backend.headVersion();
-      setState(() => _testMessage = v == null
-          ? '连接成功（远端文件还不存在，首次推送会创建）'
-          : '连接成功（当前 sha=${v.substring(0, 7)}…）');
+      setState(() {
+        _testFailed = false;
+        _testMessage = v == null
+            ? l10n.testOkNoFile
+            : l10n.testOkSha(v.substring(0, 7));
+      });
     } on SyncException catch (e) {
-      setState(() => _testMessage = '失败：HTTP ${e.statusCode} ${e.message}');
+      setState(() {
+        _testFailed = true;
+        _testMessage =
+            l10n.testFailHttp(e.statusCode?.toString() ?? '-', e.message);
+      });
     } catch (e) {
-      setState(() => _testMessage = '失败：$e');
+      setState(() {
+        _testFailed = true;
+        _testMessage = l10n.testFail(e.toString());
+      });
     } finally {
       if (mounted) setState(() => _testing = false);
     }
@@ -278,18 +325,19 @@ class _BackendFormState extends State<_BackendForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SwitchListTile(
-          title: const Text('启用'),
+          title: Text(l10n.enable),
           value: _enabled,
           contentPadding: EdgeInsets.zero,
           onChanged: (v) => setState(() => _enabled = v),
         ),
         Row(
           children: [
-            const Text('角色：'),
+            Text(l10n.roleLabel),
             const SizedBox(width: 12),
             SegmentedButton<BackendRole>(
               segments: const [
@@ -319,27 +367,27 @@ class _BackendFormState extends State<_BackendForm> {
         const SizedBox(height: 8),
         TextField(
           controller: _repo,
-          decoration: const InputDecoration(
-            labelText: '仓库名',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.repoName,
+            border: const OutlineInputBorder(),
             isDense: true,
           ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: _branch,
-          decoration: const InputDecoration(
-            labelText: '分支',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.branch,
+            border: const OutlineInputBorder(),
             isDense: true,
           ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: _filePath,
-          decoration: const InputDecoration(
-            labelText: '文件路径',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.filePath,
+            border: const OutlineInputBorder(),
             isDense: true,
           ),
         ),
@@ -352,10 +400,10 @@ class _BackendFormState extends State<_BackendForm> {
             if (_pat.text == '••••••••') _pat.clear();
             _patChanged = true;
           },
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Personal Access Token',
-            helperText: '存进 OS Keychain，不会写入任何文件',
-            border: OutlineInputBorder(),
+            helperText: l10n.patHelper,
+            border: const OutlineInputBorder(),
             isDense: true,
           ),
         ),
@@ -364,7 +412,7 @@ class _BackendFormState extends State<_BackendForm> {
           Text(
             _testMessage!,
             style: TextStyle(
-              color: _testMessage!.startsWith('失败')
+              color: _testFailed
                   ? Theme.of(context).colorScheme.error
                   : Colors.green,
             ),
@@ -381,13 +429,13 @@ class _BackendFormState extends State<_BackendForm> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.network_check),
-              label: const Text('测试连接'),
+              label: Text(l10n.testConnection),
             ),
             const Spacer(),
             FilledButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.save_outlined),
-              label: const Text('保存'),
+              label: Text(l10n.save),
             ),
           ],
         ),

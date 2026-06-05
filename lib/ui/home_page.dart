@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
+import '../l10n/app_localizations.dart';
 import '../models/password_entry.dart';
 import '../storage/vault_repository.dart';
 import '../sync/sync_manager.dart';
@@ -38,20 +39,21 @@ class _HomePageState extends State<HomePage>
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Passman Pro'),
+        title: const Text('PassPro'),
         actions: [
           const _SyncStatusBadge(),
           IconButton(
-            tooltip: '设置',
+            tooltip: l10n.settings,
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SettingsPage()),
             ),
           ),
           IconButton(
-            tooltip: '锁定',
+            tooltip: l10n.lock,
             icon: const Icon(Icons.lock_outline),
             onPressed: () {
               app.lock();
@@ -61,10 +63,10 @@ class _HomePageState extends State<HomePage>
         ],
         bottom: TabBar(
           controller: _tab,
-          tabs: const [
-            Tab(icon: Icon(Icons.search), text: '查询'),
-            Tab(icon: Icon(Icons.add_circle_outline), text: '新增'),
-            Tab(icon: Icon(Icons.list_alt), text: '列表'),
+          tabs: [
+            Tab(icon: const Icon(Icons.search), text: l10n.tabQuery),
+            Tab(icon: const Icon(Icons.add_circle_outline), text: l10n.tabAdd),
+            Tab(icon: const Icon(Icons.list_alt), text: l10n.tabList),
           ],
         ),
       ),
@@ -92,12 +94,14 @@ class _SyncStatusBadge extends StatelessWidget {
     final enabled = context.read<AppState>().settings.cloudEnabled;
     if (!enabled) return const SizedBox.shrink();
 
+    final l10n = AppLocalizations.of(context)!;
     final (icon, color, label) = switch (s.state) {
-      SyncState.idle => (Icons.cloud_outlined, null, '未同步'),
-      SyncState.working => (Icons.sync, Colors.blue, '同步中…'),
-      SyncState.ok => (Icons.cloud_done_outlined, Colors.green, '已同步'),
-      SyncState.offline => (Icons.cloud_off_outlined, Colors.orange, '离线'),
-      SyncState.error => (Icons.error_outline, Colors.red, '同步失败'),
+      SyncState.idle => (Icons.cloud_outlined, null, l10n.syncIdle),
+      SyncState.working => (Icons.sync, Colors.blue, l10n.syncWorking),
+      SyncState.ok => (Icons.cloud_done_outlined, Colors.green, l10n.syncOk),
+      SyncState.offline =>
+        (Icons.cloud_off_outlined, Colors.orange, l10n.syncOffline),
+      SyncState.error => (Icons.error_outline, Colors.red, l10n.syncError),
     };
 
     return Tooltip(
@@ -137,17 +141,19 @@ class _QueryTabState extends State<_QueryTab> {
 
   void _doQuery() {
     final app = context.read<AppState>();
+    final l10n = AppLocalizations.of(context)!;
     final r = app.vault.query(_ctrl.text.trim(), app.masterKey);
     setState(() {
       _result = r;
       _emptyMessage = r.invalidKey
-          ? '主密钥错误：找到匹配网址但无法解密'
-          : (r.isEmpty ? '没有找到匹配的记录' : null);
+          ? l10n.queryInvalidKey
+          : (r.isEmpty ? l10n.queryNoMatch : null);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -158,7 +164,7 @@ class _QueryTabState extends State<_QueryTab> {
             textInputAction: TextInputAction.search,
             onSubmitted: (_) => _doQuery(),
             decoration: InputDecoration(
-              labelText: '网址（支持关键词部分匹配）',
+              labelText: l10n.queryFieldLabel,
               hintText: 'github.com / muzi-xiaoren',
               prefixIcon: const Icon(Icons.search),
               border: const OutlineInputBorder(),
@@ -179,8 +185,8 @@ class _QueryTabState extends State<_QueryTab> {
 
   Widget _buildBody() {
     if (_result == null) {
-      return const Center(
-        child: Text('输入网址，回车开始查询'),
+      return Center(
+        child: Text(AppLocalizations.of(context)!.queryPrompt),
       );
     }
     if (_emptyMessage != null) {
@@ -212,6 +218,7 @@ class _PasswordCardState extends State<_PasswordCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -227,12 +234,12 @@ class _PasswordCardState extends State<_PasswordCard> {
                   ),
                 ),
                 IconButton(
-                  tooltip: '编辑',
+                  tooltip: l10n.edit,
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: () => _edit(context),
                 ),
                 IconButton(
-                  tooltip: '删除',
+                  tooltip: l10n.delete,
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => _delete(context),
                 ),
@@ -247,9 +254,10 @@ class _PasswordCardState extends State<_PasswordCard> {
                     const SizedBox(width: 4),
                     Expanded(child: Text(widget.entry.username)),
                     IconButton(
-                      tooltip: '复制用户名',
+                      tooltip: l10n.copyUsername,
                       icon: const Icon(Icons.copy, size: 18),
-                      onPressed: () => _copy(widget.entry.username, '用户名'),
+                      onPressed: () =>
+                          _copy(widget.entry.username, l10n.usernameCopied),
                     ),
                   ],
                 ),
@@ -265,7 +273,7 @@ class _PasswordCardState extends State<_PasswordCard> {
                   ),
                 ),
                 IconButton(
-                  tooltip: _show ? '隐藏' : '显示',
+                  tooltip: _show ? l10n.hide : l10n.show,
                   icon: Icon(
                     _show
                         ? Icons.visibility_off_outlined
@@ -275,9 +283,10 @@ class _PasswordCardState extends State<_PasswordCard> {
                   onPressed: () => setState(() => _show = !_show),
                 ),
                 IconButton(
-                  tooltip: '复制密码',
+                  tooltip: l10n.copyPassword,
                   icon: const Icon(Icons.copy, size: 18),
-                  onPressed: () => _copy(widget.entry.password, '密码'),
+                  onPressed: () =>
+                      _copy(widget.entry.password, l10n.passwordCopied),
                 ),
               ],
             ),
@@ -287,10 +296,10 @@ class _PasswordCardState extends State<_PasswordCard> {
     );
   }
 
-  void _copy(String text, String label) {
+  void _copy(String text, String message) {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label 已复制'), duration: const Duration(seconds: 1)),
+      SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
     );
   }
 
@@ -304,22 +313,23 @@ class _PasswordCardState extends State<_PasswordCard> {
   }
 
   Future<void> _delete(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('确认删除'),
-        content: Text('删除 ${widget.entry.website} 的这条记录？'),
+        title: Text(l10n.confirmDelete),
+        content: Text(l10n.deleteBody(widget.entry.website)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton.tonal(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('删除'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -334,7 +344,7 @@ class _PasswordCardState extends State<_PasswordCard> {
     if (!context.mounted) return;
     widget.onChanged();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已删除')),
+      SnackBar(content: Text(l10n.deleted)),
     );
     await _maybePromptPush(context);
   }
@@ -378,11 +388,12 @@ class _AddTabState extends State<_AddTab> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context)!;
     final w = _website.text.trim();
     final pw = _password.text;
     if (w.isEmpty || pw.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('网址和密码不能为空')),
+        SnackBar(content: Text(l10n.websitePasswordEmpty)),
       );
       return;
     }
@@ -399,7 +410,7 @@ class _AddTabState extends State<_AddTab> {
     );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? '已保存' : '已存在相同条目')),
+      SnackBar(content: Text(ok ? l10n.saved : l10n.duplicateEntry)),
     );
     if (ok) {
       _website.clear();
@@ -411,6 +422,7 @@ class _AddTabState extends State<_AddTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -422,7 +434,7 @@ class _AddTabState extends State<_AddTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('生成密码',
+                  Text(l10n.generatePassword,
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Row(
@@ -431,9 +443,9 @@ class _AddTabState extends State<_AddTab> {
                         child: TextField(
                           controller: _length,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: '长度',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: l10n.length,
+                            border: const OutlineInputBorder(),
                             isDense: true,
                           ),
                         ),
@@ -442,7 +454,7 @@ class _AddTabState extends State<_AddTab> {
                       FilledButton.icon(
                         onPressed: _generate,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('生成'),
+                        label: Text(l10n.generate),
                       ),
                     ],
                   ),
@@ -450,22 +462,22 @@ class _AddTabState extends State<_AddTab> {
                     spacing: 8,
                     children: [
                       FilterChip(
-                        label: const Text('大写'),
+                        label: Text(l10n.charUpper),
                         selected: _upper,
                         onSelected: (v) => setState(() => _upper = v),
                       ),
                       FilterChip(
-                        label: const Text('小写'),
+                        label: Text(l10n.charLower),
                         selected: _lower,
                         onSelected: (v) => setState(() => _lower = v),
                       ),
                       FilterChip(
-                        label: const Text('数字'),
+                        label: Text(l10n.charDigits),
                         selected: _digits,
                         onSelected: (v) => setState(() => _digits = v),
                       ),
                       FilterChip(
-                        label: const Text('特殊'),
+                        label: Text(l10n.charSpecial),
                         selected: _special,
                         onSelected: (v) => setState(() => _special = v),
                       ),
@@ -482,42 +494,42 @@ class _AddTabState extends State<_AddTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('保存到密码库',
+                  Text(l10n.saveToVault,
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _website,
-                    decoration: const InputDecoration(
-                      labelText: '网址 *',
-                      prefixIcon: Icon(Icons.link),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.websiteRequired,
+                      prefixIcon: const Icon(Icons.link),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _username,
-                    decoration: const InputDecoration(
-                      labelText: '用户名（可选）',
-                      prefixIcon: Icon(Icons.person_outline),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.usernameOptional,
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _password,
-                    decoration: const InputDecoration(
-                      labelText: '密码 *',
-                      prefixIcon: Icon(Icons.key_outlined),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.passwordRequired,
+                      prefixIcon: const Icon(Icons.key_outlined),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
                     onPressed: _save,
                     icon: const Icon(Icons.save_outlined),
-                    label: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Text('保存'),
+                    label: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(l10n.save),
                     ),
                   ),
                 ],
@@ -532,6 +544,8 @@ class _AddTabState extends State<_AddTab> {
 
 // ===================== 列表 Tab =====================
 
+enum _ListSort { nameAsc, nameDesc, timeDesc, timeAsc }
+
 class _ListTab extends StatefulWidget {
   const _ListTab();
 
@@ -540,61 +554,166 @@ class _ListTab extends StatefulWidget {
 }
 
 class _ListTabState extends State<_ListTab> {
+  _ListSort _sort = _ListSort.nameAsc;
+
+  int _compare(LogRecord a, LogRecord b) {
+    switch (_sort) {
+      case _ListSort.nameAsc:
+        return (a.website ?? '')
+            .toLowerCase()
+            .compareTo((b.website ?? '').toLowerCase());
+      case _ListSort.nameDesc:
+        return (b.website ?? '')
+            .toLowerCase()
+            .compareTo((a.website ?? '').toLowerCase());
+      case _ListSort.timeDesc:
+        return b.ts.compareTo(a.ts);
+      case _ListSort.timeAsc:
+        return a.ts.compareTo(b.ts);
+    }
+  }
+
+  String _sortLabel(AppLocalizations l10n, _ListSort s) {
+    switch (s) {
+      case _ListSort.nameAsc:
+        return l10n.sortNameAsc;
+      case _ListSort.nameDesc:
+        return l10n.sortNameDesc;
+      case _ListSort.timeDesc:
+        return l10n.sortTimeDesc;
+      case _ListSort.timeAsc:
+        return l10n.sortTimeAsc;
+    }
+  }
+
+  /// 点击条目区域：主密钥可解密则直接复制密码到剪贴板，否则提示。
+  void _copyPassword(LogRecord r) {
+    final app = context.read<AppState>();
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final pw = app.vault.index.decryptPassword(r, app.masterKey);
+      Clipboard.setData(ClipboardData(text: pw));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.passwordCopied),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.decryptFailedCopy)),
+      );
+    }
+  }
+
+  /// 打开详情/编辑页；主密钥错误时进入带返回按钮的提示页（macOS 也能返回）。
+  Future<void> _openDetail(LogRecord r) async {
+    final app = context.read<AppState>();
+    final l10n = AppLocalizations.of(context)!;
+    final ok = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) {
+          try {
+            final entry = PasswordEntry(
+              id: r.id,
+              website: r.website ?? '',
+              username: r.username ?? '',
+              password: app.vault.index.decryptPassword(r, app.masterKey),
+              updatedAt: r.ts,
+            );
+            return EditPasswordPage(existing: entry);
+          } catch (_) {
+            return Scaffold(
+              appBar: AppBar(title: Text(l10n.cannotDecrypt)),
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    l10n.cannotDecryptBody,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            );
+          }
+        },
+      ),
+    );
+    if (ok == true && mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final l10n = AppLocalizations.of(context)!;
     final records = app.vault.index.activeRecords.toList(growable: false)
-      ..sort((a, b) => (a.website ?? '').compareTo(b.website ?? ''));
+      ..sort(_compare);
 
     if (records.isEmpty) {
-      return const Center(child: Text('密码库为空，去"新增"添加第一条吧'));
+      return Center(child: Text(l10n.emptyVault));
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: records.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        final r = records[i];
-        return Card(
-          child: ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: Text(r.website ?? ''),
-            subtitle: Text(
-              (r.username ?? '').isEmpty ? '（无用户名）' : r.username!,
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.chevron_right),
-              onPressed: () async {
-                final ok = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) {
-                      try {
-                        final entry = PasswordEntry(
-                          id: r.id,
-                          website: r.website ?? '',
-                          username: r.username ?? '',
-                          password: app.vault.index.decryptPassword(
-                            r,
-                            app.masterKey,
-                          ),
-                          updatedAt: r.ts,
-                        );
-                        return EditPasswordPage(existing: entry);
-                      } catch (_) {
-                        return const Scaffold(
-                          body: Center(child: Text('该记录无法用当前主密钥解密')),
-                        );
-                      }
-                    },
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+          child: Row(
+            children: [
+              Text(
+                l10n.totalCount(records.length),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const Spacer(),
+              PopupMenuButton<_ListSort>(
+                initialValue: _sort,
+                tooltip: l10n.sortTooltip,
+                onSelected: (v) => setState(() => _sort = v),
+                itemBuilder: (_) => [
+                  for (final s in _ListSort.values)
+                    PopupMenuItem(value: s, child: Text(_sortLabel(l10n, s))),
+                ],
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.sort, size: 18),
+                      const SizedBox(width: 4),
+                      Text(_sortLabel(l10n, _sort)),
+                    ],
                   ),
-                );
-                if (ok == true && mounted) setState(() {});
-              },
-            ),
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: records.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (_, i) {
+              final r = records[i];
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.lock_outline),
+                  title: Text(r.website ?? ''),
+                  subtitle: Text(
+                    (r.username ?? '').isEmpty ? l10n.noUsername : r.username!,
+                  ),
+                  onTap: () => _copyPassword(r),
+                  trailing: IconButton(
+                    tooltip: l10n.edit,
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => _openDetail(r),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -633,6 +752,7 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context)!;
     final app = context.read<AppState>();
     final beforeOk = await _maybePromptPull(context);
     if (!beforeOk) return;
@@ -646,26 +766,27 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
     );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已更新')),
+      SnackBar(content: Text(l10n.updated)),
     );
     await _maybePromptPush(context);
     if (context.mounted) Navigator.of(context).pop(true);
   }
 
   Future<void> _delete() async {
+    final l10n = AppLocalizations.of(context)!;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('确认删除'),
-        content: Text('删除 ${_website.text} 的这条记录？'),
+        title: Text(l10n.confirmDelete),
+        content: Text(l10n.deleteBody(_website.text)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton.tonal(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -682,9 +803,10 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('编辑'),
+        title: Text(l10n.edit),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline),
@@ -699,19 +821,19 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
           children: [
             TextField(
               controller: _website,
-              decoration: const InputDecoration(
-                labelText: '网址',
-                prefixIcon: Icon(Icons.link),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.website,
+                prefixIcon: const Icon(Icons.link),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _username,
-              decoration: const InputDecoration(
-                labelText: '用户名',
-                prefixIcon: Icon(Icons.person_outline),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.username,
+                prefixIcon: const Icon(Icons.person_outline),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
@@ -719,7 +841,7 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
               controller: _password,
               obscureText: !_showPw,
               decoration: InputDecoration(
-                labelText: '密码',
+                labelText: l10n.password,
                 prefixIcon: const Icon(Icons.key_outlined),
                 border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
@@ -734,9 +856,9 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
             FilledButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.save_outlined),
-              label: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('保存'),
+              label: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(l10n.save),
               ),
             ),
           ],

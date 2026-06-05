@@ -51,7 +51,7 @@ class GitBackend implements SyncBackend {
         'Accept': kind == BackendKind.github
             ? 'application/vnd.github+json'
             : 'application/json',
-        'User-Agent': 'passman_pro',
+        'User-Agent': 'PassPro',
       };
 
   @override

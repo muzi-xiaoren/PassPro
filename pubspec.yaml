@@ -1,7 +1,7 @@
 name: passman_pro
 description: 跨平台本地密码管理器，兼容旧 Python Fernet 加密文件，支持 GitHub/Gitee 双仓库同步。
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.2.0+2
 
 environment:
   sdk: ^3.4.0
@@ -31,10 +31,32 @@ dependencies:
   # UI 状态管理（轻量）
   provider: ^6.1.2
 
+  # 多语言 (i18n)
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
+  generate: true        # 启用 gen-l10n（ARB → AppLocalizations）
+
+# 应用图标：源图 assets/icon/app_icon.png（1024x1024）。
+# 生成命令：dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/icon/app_icon.png"
+  android: true
+  ios: true
+  remove_alpha_ios: true        # App Store 不允许 iOS 图标带 alpha 通道
+  macos:
+    generate: true
+  windows:
+    generate: true
+    icon_size: 256
+  web:
+    generate: false

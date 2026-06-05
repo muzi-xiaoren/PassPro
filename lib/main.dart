@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app_state.dart';
+import 'l10n/app_localizations.dart';
 import 'settings/app_settings.dart';
 import 'settings/secure_credential_store.dart';
 import 'storage/compactor.dart';
@@ -42,19 +43,23 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: settings),
         ChangeNotifierProvider.value(value: sync),
       ],
-      child: const PassmanProApp(),
+      child: const PassProApp(),
     ),
   );
 }
 
-class PassmanProApp extends StatelessWidget {
-  const PassmanProApp({super.key});
+class PassProApp extends StatelessWidget {
+  const PassProApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<AppSettings>();
     return MaterialApp(
-      title: 'Passman Pro',
+      title: 'PassPro',
       debugShowCheckedModeBanner: false,
+      locale: settings.locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(

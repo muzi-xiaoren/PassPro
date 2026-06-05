@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
+import '../l10n/app_localizations.dart';
 import 'home_page.dart';
 
 class MasterKeyPage extends StatefulWidget {
@@ -31,6 +32,7 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -48,13 +50,13 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Passman Pro',
+                  'PassPro',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '请输入主密钥',
+                  l10n.enterMasterKey,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
@@ -66,7 +68,7 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
                   textInputAction: TextInputAction.go,
                   onSubmitted: (_) => _unlock(),
                   decoration: InputDecoration(
-                    labelText: 'Master Key',
+                    labelText: l10n.masterKeyLabel,
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(_obscure
@@ -79,14 +81,14 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: _unlock,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text('解锁'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(l10n.unlock),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '主密钥不会被保存，每次启动需要重新输入。\n留空将以单空格作为主密钥（与旧版兼容）。',
+                  l10n.masterKeyHint,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),

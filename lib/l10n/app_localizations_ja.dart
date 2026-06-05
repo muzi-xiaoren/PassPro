@@ -1,0 +1,323 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Japanese (`ja`).
+class AppLocalizationsJa extends AppLocalizations {
+  AppLocalizationsJa([String locale = 'ja']) : super(locale);
+
+  @override
+  String get enterMasterKey => 'マスターキーを入力してください';
+
+  @override
+  String get masterKeyLabel => 'マスターキー';
+
+  @override
+  String get unlock => 'ロック解除';
+
+  @override
+  String get masterKeyHint =>
+      'マスターキーは保存されず、起動のたびに再入力が必要です。\n空欄のままにすると半角スペース1文字をキーとして使用します（旧バージョンと互換）。';
+
+  @override
+  String get settings => '設定';
+
+  @override
+  String get lock => 'ロック';
+
+  @override
+  String get tabQuery => '検索';
+
+  @override
+  String get tabAdd => '追加';
+
+  @override
+  String get tabList => '一覧';
+
+  @override
+  String get syncIdle => '未同期';
+
+  @override
+  String get syncWorking => '同期中…';
+
+  @override
+  String get syncOk => '同期済み';
+
+  @override
+  String get syncOffline => 'オフライン';
+
+  @override
+  String get syncError => '同期に失敗';
+
+  @override
+  String get queryFieldLabel => 'サイト（キーワードの部分一致に対応）';
+
+  @override
+  String get queryInvalidKey => 'マスターキーが違います：一致するサイトはありますが復号できません';
+
+  @override
+  String get queryNoMatch => '一致するレコードが見つかりません';
+
+  @override
+  String get queryPrompt => 'サイトを入力し、Enterで検索';
+
+  @override
+  String get edit => '編集';
+
+  @override
+  String get delete => '削除';
+
+  @override
+  String get copyUsername => 'ユーザー名をコピー';
+
+  @override
+  String get hide => '非表示';
+
+  @override
+  String get show => '表示';
+
+  @override
+  String get copyPassword => 'パスワードをコピー';
+
+  @override
+  String get usernameCopied => 'ユーザー名をコピーしました';
+
+  @override
+  String get passwordCopied => 'パスワードをコピーしました';
+
+  @override
+  String get confirmDelete => '削除の確認';
+
+  @override
+  String deleteBody(String website) {
+    return '$website のこのレコードを削除しますか？';
+  }
+
+  @override
+  String get cancel => 'キャンセル';
+
+  @override
+  String get deleted => '削除しました';
+
+  @override
+  String get generatePassword => 'パスワードを生成';
+
+  @override
+  String get length => '長さ';
+
+  @override
+  String get generate => '生成';
+
+  @override
+  String get charUpper => '大文字';
+
+  @override
+  String get charLower => '小文字';
+
+  @override
+  String get charDigits => '数字';
+
+  @override
+  String get charSpecial => '記号';
+
+  @override
+  String get saveToVault => '保管庫に保存';
+
+  @override
+  String get websiteRequired => 'サイト *';
+
+  @override
+  String get usernameOptional => 'ユーザー名（任意）';
+
+  @override
+  String get passwordRequired => 'パスワード *';
+
+  @override
+  String get save => '保存';
+
+  @override
+  String get websitePasswordEmpty => 'サイトとパスワードは空にできません';
+
+  @override
+  String get saved => '保存しました';
+
+  @override
+  String get duplicateEntry => '同じエントリが既に存在します';
+
+  @override
+  String get emptyVault => '保管庫は空です。「追加」から最初のエントリを登録してください';
+
+  @override
+  String totalCount(int count) {
+    return '全 $count 件';
+  }
+
+  @override
+  String get sortNameAsc => '名前 A→Z';
+
+  @override
+  String get sortNameDesc => '名前 Z→A';
+
+  @override
+  String get sortTimeDesc => '追加日時（新しい順）';
+
+  @override
+  String get sortTimeAsc => '追加日時（古い順）';
+
+  @override
+  String get sortTooltip => '並べ替え';
+
+  @override
+  String get decryptFailedCopy => '現在のマスターキーで復号できないため、コピーに失敗しました';
+
+  @override
+  String get noUsername => '（ユーザー名なし）';
+
+  @override
+  String get cannotDecrypt => '復号できません';
+
+  @override
+  String get cannotDecryptBody =>
+      'このレコードは現在のマスターキーでは復号できません。\n左上の戻るをタップし、正しいマスターキーを入力し直してください。';
+
+  @override
+  String get website => 'サイト';
+
+  @override
+  String get username => 'ユーザー名';
+
+  @override
+  String get password => 'パスワード';
+
+  @override
+  String get updated => '更新しました';
+
+  @override
+  String get sectionLanguage => '言語';
+
+  @override
+  String get language => '言語';
+
+  @override
+  String get followSystem => 'システムに従う';
+
+  @override
+  String get sectionCloudSync => 'クラウド同期';
+
+  @override
+  String get enableCloudSync => 'クラウド同期を有効にする';
+
+  @override
+  String get enableCloudSyncSub => '無効にすると、すべてのデータはこの端末にのみ保存されます';
+
+  @override
+  String get sectionSyncPrompt => '同期の確認';
+
+  @override
+  String get promptBeforePull => '操作前にプルを確認';
+
+  @override
+  String get promptBeforePullSub => '追加／編集／削除の前に「リモートからプル」の確認を表示';
+
+  @override
+  String get promptAfterPush => '操作後にプッシュを確認';
+
+  @override
+  String get smartSkip => 'スマートスキップ';
+
+  @override
+  String get smartSkipSub => 'リモートに更新がない場合は「プル」の確認を自動でスキップ';
+
+  @override
+  String get sectionMaintenance => 'メンテナンス';
+
+  @override
+  String get compactNow => '今すぐログを整理';
+
+  @override
+  String get sectionAbout => '情報';
+
+  @override
+  String get aboutSubtitle => 'バージョン 0.2.0 · 旧暗号化ファイルと Fernet 互換';
+
+  @override
+  String compactDone(int count, String size) {
+    return '整理しました：有効レコード $count 件、$size を節約';
+  }
+
+  @override
+  String compactionStatus(int active, int total, String amp) {
+    return '現在 有効 $active 件 / $total 行（増幅率 $amp×）';
+  }
+
+  @override
+  String get backendDisabled => '未設定';
+
+  @override
+  String get enable => '有効';
+
+  @override
+  String get roleLabel => '役割：';
+
+  @override
+  String get repoName => 'リポジトリ名';
+
+  @override
+  String get branch => 'ブランチ';
+
+  @override
+  String get filePath => 'ファイルパス';
+
+  @override
+  String get patHelper => 'OSキーチェーンに保存され、ファイルには書き込まれません';
+
+  @override
+  String get testOkNoFile => '接続成功（リモートファイルはまだ存在しません。初回プッシュ時に作成されます）';
+
+  @override
+  String testOkSha(String sha) {
+    return '接続成功（現在の sha=$sha…）';
+  }
+
+  @override
+  String testFailHttp(String code, String message) {
+    return '失敗：HTTP $code $message';
+  }
+
+  @override
+  String testFail(String error) {
+    return '失敗：$error';
+  }
+
+  @override
+  String get testConnection => '接続をテスト';
+
+  @override
+  String get pullTitle => '先にリモートからプルしますか？';
+
+  @override
+  String get pullMessage => 'リモートに更新がある可能性があります。続行する前にプルしますか？';
+
+  @override
+  String get pull => 'プル';
+
+  @override
+  String get skip => 'スキップ';
+
+  @override
+  String get pushTitle => 'ローカルに保存しました';
+
+  @override
+  String get pushMessage => 'リモートにプッシュしますか？';
+
+  @override
+  String get push => 'プッシュ';
+
+  @override
+  String get later => '後で';
+
+  @override
+  String get dontPromptThisSession => '今回のセッションでは表示しない';
+}

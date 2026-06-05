@@ -2,29 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
+import '../l10n/app_localizations.dart';
 
 enum PromptChoice { confirm, skip, skipSession, cancel }
 
 /// 操作前提示拉取。返回用户选择，且会把"会话内不再提示"写回 [AppState.sessionSkip]。
 Future<PromptChoice> showPullPrompt(BuildContext context) async {
+  final l10n = AppLocalizations.of(context)!;
   return _showPrompt(
     context,
-    title: '建议先拉取远端',
-    message: '远端可能有更新，是否在继续之前先拉取？',
-    confirmLabel: '拉取',
-    skipLabel: '跳过',
+    title: l10n.pullTitle,
+    message: l10n.pullMessage,
+    confirmLabel: l10n.pull,
+    skipLabel: l10n.skip,
     isBefore: true,
   );
 }
 
 /// 操作后提示推送。
 Future<PromptChoice> showPushPrompt(BuildContext context) async {
+  final l10n = AppLocalizations.of(context)!;
   return _showPrompt(
     context,
-    title: '本地已保存',
-    message: '是否推送到远端？',
-    confirmLabel: '推送',
-    skipLabel: '稍后',
+    title: l10n.pushTitle,
+    message: l10n.pushMessage,
+    confirmLabel: l10n.push,
+    skipLabel: l10n.later,
     isBefore: false,
   );
 }
@@ -54,7 +57,7 @@ Future<PromptChoice> _showPrompt(
               contentPadding: EdgeInsets.zero,
               value: skipSession,
               onChanged: (v) => setState(() => skipSession = v ?? false),
-              title: const Text('本次会话内不再提示'),
+              title: Text(AppLocalizations.of(ctx)!.dontPromptThisSession),
               controlAffinity: ListTileControlAffinity.leading,
             ),
           ],

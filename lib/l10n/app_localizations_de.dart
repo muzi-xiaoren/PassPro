@@ -1,0 +1,335 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for German (`de`).
+class AppLocalizationsDe extends AppLocalizations {
+  AppLocalizationsDe([String locale = 'de']) : super(locale);
+
+  @override
+  String get enterMasterKey => 'Hauptschlüssel eingeben';
+
+  @override
+  String get masterKeyLabel => 'Hauptschlüssel';
+
+  @override
+  String get unlock => 'Entsperren';
+
+  @override
+  String get masterKeyHint =>
+      'Der Hauptschlüssel wird nie gespeichert; du musst ihn bei jedem Start erneut eingeben.\nLeer lassen, um ein einzelnes Leerzeichen als Schlüssel zu verwenden (kompatibel mit der alten Version).';
+
+  @override
+  String get settings => 'Einstellungen';
+
+  @override
+  String get lock => 'Sperren';
+
+  @override
+  String get tabQuery => 'Suchen';
+
+  @override
+  String get tabAdd => 'Hinzufügen';
+
+  @override
+  String get tabList => 'Liste';
+
+  @override
+  String get syncIdle => 'Nicht synchronisiert';
+
+  @override
+  String get syncWorking => 'Synchronisierung…';
+
+  @override
+  String get syncOk => 'Synchronisiert';
+
+  @override
+  String get syncOffline => 'Offline';
+
+  @override
+  String get syncError => 'Synchronisierung fehlgeschlagen';
+
+  @override
+  String get queryFieldLabel =>
+      'Website (Teilübereinstimmung per Stichwort unterstützt)';
+
+  @override
+  String get queryInvalidKey =>
+      'Falscher Hauptschlüssel: passende Website gefunden, aber Entschlüsseln nicht möglich';
+
+  @override
+  String get queryNoMatch => 'Keine passenden Einträge gefunden';
+
+  @override
+  String get queryPrompt => 'Website eingeben und mit Enter suchen';
+
+  @override
+  String get edit => 'Bearbeiten';
+
+  @override
+  String get delete => 'Löschen';
+
+  @override
+  String get copyUsername => 'Benutzernamen kopieren';
+
+  @override
+  String get hide => 'Verbergen';
+
+  @override
+  String get show => 'Anzeigen';
+
+  @override
+  String get copyPassword => 'Passwort kopieren';
+
+  @override
+  String get usernameCopied => 'Benutzername kopiert';
+
+  @override
+  String get passwordCopied => 'Passwort kopiert';
+
+  @override
+  String get confirmDelete => 'Löschen bestätigen';
+
+  @override
+  String deleteBody(String website) {
+    return 'Diesen Eintrag für $website löschen?';
+  }
+
+  @override
+  String get cancel => 'Abbrechen';
+
+  @override
+  String get deleted => 'Gelöscht';
+
+  @override
+  String get generatePassword => 'Passwort generieren';
+
+  @override
+  String get length => 'Länge';
+
+  @override
+  String get generate => 'Generieren';
+
+  @override
+  String get charUpper => 'Großbuchstaben';
+
+  @override
+  String get charLower => 'Kleinbuchstaben';
+
+  @override
+  String get charDigits => 'Ziffern';
+
+  @override
+  String get charSpecial => 'Sonderzeichen';
+
+  @override
+  String get saveToVault => 'Im Tresor speichern';
+
+  @override
+  String get websiteRequired => 'Website *';
+
+  @override
+  String get usernameOptional => 'Benutzername (optional)';
+
+  @override
+  String get passwordRequired => 'Passwort *';
+
+  @override
+  String get save => 'Speichern';
+
+  @override
+  String get websitePasswordEmpty =>
+      'Website und Passwort dürfen nicht leer sein';
+
+  @override
+  String get saved => 'Gespeichert';
+
+  @override
+  String get duplicateEntry => 'Ein identischer Eintrag existiert bereits';
+
+  @override
+  String get emptyVault =>
+      'Der Tresor ist leer. Füge unter „Hinzufügen“ deinen ersten Eintrag hinzu.';
+
+  @override
+  String totalCount(int count) {
+    return '$count insgesamt';
+  }
+
+  @override
+  String get sortNameAsc => 'Name A→Z';
+
+  @override
+  String get sortNameDesc => 'Name Z→A';
+
+  @override
+  String get sortTimeDesc => 'Hinzugefügt (neueste zuerst)';
+
+  @override
+  String get sortTimeAsc => 'Hinzugefügt (älteste zuerst)';
+
+  @override
+  String get sortTooltip => 'Sortieren';
+
+  @override
+  String get decryptFailedCopy =>
+      'Mit dem aktuellen Hauptschlüssel nicht entschlüsselbar; Kopieren fehlgeschlagen';
+
+  @override
+  String get noUsername => '(kein Benutzername)';
+
+  @override
+  String get cannotDecrypt => 'Entschlüsseln nicht möglich';
+
+  @override
+  String get cannotDecryptBody =>
+      'Dieser Eintrag kann mit dem aktuellen Hauptschlüssel nicht entschlüsselt werden.\nTippe oben links auf Zurück und gib den richtigen Hauptschlüssel erneut ein.';
+
+  @override
+  String get website => 'Website';
+
+  @override
+  String get username => 'Benutzername';
+
+  @override
+  String get password => 'Passwort';
+
+  @override
+  String get updated => 'Aktualisiert';
+
+  @override
+  String get sectionLanguage => 'Sprache';
+
+  @override
+  String get language => 'Sprache';
+
+  @override
+  String get followSystem => 'System folgen';
+
+  @override
+  String get sectionCloudSync => 'Cloud-Synchronisierung';
+
+  @override
+  String get enableCloudSync => 'Cloud-Synchronisierung aktivieren';
+
+  @override
+  String get enableCloudSyncSub =>
+      'Wenn aus, bleiben alle Daten nur auf diesem Gerät';
+
+  @override
+  String get sectionSyncPrompt => 'Synchronisierungs-Hinweise';
+
+  @override
+  String get promptBeforePull => 'Vor Änderungen zum Pull auffordern';
+
+  @override
+  String get promptBeforePullSub =>
+      'Vor Hinzufügen / Bearbeiten / Löschen einen Hinweis „vom Remote pullen“ anzeigen';
+
+  @override
+  String get promptAfterPush => 'Nach Änderungen zum Push auffordern';
+
+  @override
+  String get smartSkip => 'Intelligentes Überspringen';
+
+  @override
+  String get smartSkipSub =>
+      'Den „Pull“-Hinweis automatisch überspringen, wenn der Remote keine Updates hat';
+
+  @override
+  String get sectionMaintenance => 'Wartung';
+
+  @override
+  String get compactNow => 'Protokoll jetzt verdichten';
+
+  @override
+  String get sectionAbout => 'Über';
+
+  @override
+  String get aboutSubtitle =>
+      'Version 0.2.0 · Fernet-kompatibel mit alten verschlüsselten Dateien';
+
+  @override
+  String compactDone(int count, String size) {
+    return 'Verdichtet: $count aktive Einträge, $size gespart';
+  }
+
+  @override
+  String compactionStatus(int active, int total, String amp) {
+    return 'Aktuell $active aktiv / $total Zeilen (Verstärkung $amp×)';
+  }
+
+  @override
+  String get backendDisabled => 'Nicht aktiviert';
+
+  @override
+  String get enable => 'Aktivieren';
+
+  @override
+  String get roleLabel => 'Rolle:';
+
+  @override
+  String get repoName => 'Repository-Name';
+
+  @override
+  String get branch => 'Branch';
+
+  @override
+  String get filePath => 'Dateipfad';
+
+  @override
+  String get patHelper =>
+      'Im Schlüsselbund des Betriebssystems gespeichert; wird nie in eine Datei geschrieben';
+
+  @override
+  String get testOkNoFile =>
+      'Verbunden (die Remote-Datei existiert noch nicht; der erste Push erstellt sie)';
+
+  @override
+  String testOkSha(String sha) {
+    return 'Verbunden (aktueller sha=$sha…)';
+  }
+
+  @override
+  String testFailHttp(String code, String message) {
+    return 'Fehlgeschlagen: HTTP $code $message';
+  }
+
+  @override
+  String testFail(String error) {
+    return 'Fehlgeschlagen: $error';
+  }
+
+  @override
+  String get testConnection => 'Verbindung testen';
+
+  @override
+  String get pullTitle => 'Zuerst vom Remote pullen?';
+
+  @override
+  String get pullMessage =>
+      'Der Remote könnte Updates haben. Vor dem Fortfahren pullen?';
+
+  @override
+  String get pull => 'Pull';
+
+  @override
+  String get skip => 'Überspringen';
+
+  @override
+  String get pushTitle => 'Lokal gespeichert';
+
+  @override
+  String get pushMessage => 'Zum Remote pushen?';
+
+  @override
+  String get push => 'Push';
+
+  @override
+  String get later => 'Später';
+
+  @override
+  String get dontPromptThisSession => 'In dieser Sitzung nicht mehr fragen';
+}

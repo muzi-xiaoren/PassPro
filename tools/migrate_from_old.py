@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
 """从旧 Python 版 password_manager 迁移数据到 Passman Pro (PassPro)。
 
-旧格式（CSV，每行一条）：
-    website,username,encrypted_password
+旧格式（Markdown，每条三行一组）：
+    ### website
+    - **Username**: username
+    - **Password**: encrypted_password
 新格式（JSON Lines，每行一个操作）：
     {"op":"ADD","id":"...","ts":1715000000,"w":"github.com","u":"alice","p":"<fernet-ct>"}
 
 加密算法完全相同（SHA-256 派生 + Fernet），所以密文字段 p 直接复制、无需解密重加密。
 
 用法：
-    # 预览（不写文件），默认读 ~/password_person/passwords.txt
+    # 预览（不写文件），默认读 ~/Downloads/passwords.md
     python3 tools/migrate_from_old.py --dry-run
 
     # 生成新日志到当前目录的 passwords.log
     python3 tools/migrate_from_old.py
 
     # 指定输入/输出
-    python3 tools/migrate_from_old.py --in /path/old.txt --out /path/passwords.log
+    python3 tools/migrate_from_old.py --in /path/passwords.md --out /path/passwords.log
 
 生成后，把 passwords.log 放到 App 的数据目录（见脚本结尾打印的各平台路径），
 然后启动 App 即可。建议在 App 从未写入过数据时迁移，避免覆盖。
@@ -29,25 +31,46 @@ import secrets
 import sys
 import time
 
-DEFAULT_IN = os.path.expanduser("~/password_person/passwords.txt")
+DEFAULT_IN = os.path.expanduser("~/Downloads/passwords.md")
 DEFAULT_OUT = "passwords.log"
 
 
-def parse_old_line(line):
-    """把一行 'website,username,encrypted_password' 拆成三段。
+def parse_markdown(text):
+    """解析 Markdown 格式，每条三行一组：
 
-    密文是 base64url（不含逗号），所以取最后一段为密码、首段为网址、
-    中间（可能含逗号）拼回 username。
+        ### website
+        - **Username**: username
+        - **Password**: encrypted_password
+
+    返回 (website, username, password) 列表，username 可为空。
     """
-    parts = line.split(",")
-    if len(parts) < 3:
-        return None
-    website = parts[0].strip()
-    password = parts[-1].strip()
-    username = ",".join(parts[1:-1]).strip()
-    if not website or not password:
-        return None
-    return website, username, password
+    entries = []
+    website = None
+    username = ""
+    password = None
+
+    def flush():
+        nonlocal website, username, password
+        if website and password:
+            entries.append((website, username, password))
+        website = None
+        username = ""
+        password = None
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("###"):
+            flush()
+            website = line.lstrip("#").strip()
+        elif line.startswith("- **Username**:"):
+            username = line.split(":", 1)[1].strip()
+        elif line.startswith("- **Password**:"):
+            password = line.split(":", 1)[1].strip()
+
+    flush()
+    return entries
 
 
 def make_id(index):
@@ -66,34 +89,27 @@ def convert(in_path, dedup=True):
     suspicious = 0
 
     with open(in_path, "r", encoding="utf-8") as f:
-        for raw in f:
-            line = raw.strip()
-            if not line:
+        entries = parse_markdown(f.read())
+
+    for website, username, password in entries:
+        if dedup:
+            key = (website, username, password)
+            if key in seen:
                 continue
-            parsed = parse_old_line(line)
-            if parsed is None:
-                skipped += 1
-                continue
-            website, username, password = parsed
+            seen.add(key)
 
-            if dedup:
-                key = (website, username, password)
-                if key in seen:
-                    continue
-                seen.add(key)
+        # Fernet token 以 'gAAAAA' 开头，给个温和提醒（不阻断）
+        if not password.startswith("gAAAAA"):
+            suspicious += 1
 
-            # Fernet token 以 'gAAAAA' 开头，给个温和提醒（不阻断）
-            if not password.startswith("gAAAAA"):
-                suspicious += 1
-
-            records.append({
-                "op": "ADD",
-                "id": make_id(len(records)),
-                "ts": now,
-                "w": website,
-                "u": username,
-                "p": password,
-            })
+        records.append({
+            "op": "ADD",
+            "id": make_id(len(records)),
+            "ts": now,
+            "w": website,
+            "u": username,
+            "p": password,
+        })
 
     return records, skipped, suspicious
 
@@ -112,7 +128,7 @@ def app_data_paths():
 def main():
     ap = argparse.ArgumentParser(description="迁移旧 Python 密码数据到 PassPro")
     ap.add_argument("--in", dest="in_path", default=DEFAULT_IN,
-                    help=f"旧 CSV 路径（默认 {DEFAULT_IN}）")
+                    help=f"旧 Markdown 路径（默认 {DEFAULT_IN}）")
     ap.add_argument("--out", dest="out_path", default=DEFAULT_OUT,
                     help=f"输出 JSON Lines 路径（默认 ./{DEFAULT_OUT}）")
     ap.add_argument("--dry-run", action="store_true", help="只预览，不写文件")
