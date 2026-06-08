@@ -14,7 +14,14 @@ class MasterKeyPage extends StatefulWidget {
 
 class _MasterKeyPageState extends State<MasterKeyPage> {
   final _ctrl = TextEditingController();
-  bool _obscure = true;
+  late bool _obscure;
+
+  @override
+  void initState() {
+    super.initState();
+    // 恢复上次选择的“是否默认明文可见”
+    _obscure = !context.read<AppState>().settings.masterKeyVisible;
+  }
 
   @override
   void dispose() {
@@ -74,7 +81,13 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
                       icon: Icon(_obscure
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined),
-                      onPressed: () => setState(() => _obscure = !_obscure),
+                      onPressed: () {
+                        setState(() => _obscure = !_obscure);
+                        context
+                            .read<AppState>()
+                            .settings
+                            .setMasterKeyVisible(!_obscure);
+                      },
                     ),
                   ),
                 ),

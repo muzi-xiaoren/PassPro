@@ -38,7 +38,6 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppState>();
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
@@ -52,14 +51,7 @@ class _HomePageState extends State<HomePage>
               MaterialPageRoute(builder: (_) => const SettingsPage()),
             ),
           ),
-          IconButton(
-            tooltip: l10n.lock,
-            icon: const Icon(Icons.lock_outline),
-            onPressed: () {
-              app.lock();
-              Navigator.of(context).popUntil((r) => r.isFirst);
-            },
-          ),
+          const _AccountMenu(),
         ],
         bottom: TabBar(
           controller: _tab,
@@ -82,7 +74,9 @@ class _HomePageState extends State<HomePage>
   }
 }
 
-// ===================== 顶栏同步状态徽章 =====================
+// ===================== 顶栏同步菜单 =====================
+
+enum _SyncAction { pull, push, overwriteLocal, overwriteRemote }
 
 class _SyncStatusBadge extends StatelessWidget {
   const _SyncStatusBadge();
@@ -104,17 +98,285 @@ class _SyncStatusBadge extends StatelessWidget {
       SyncState.error => (Icons.error_outline, Colors.red, l10n.syncError),
     };
 
-    return Tooltip(
-      message: s.message ?? label,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: IconButton(
-          icon: Icon(icon, color: color),
-          onPressed: () async {
-            await sync.pullAndMerge();
-          },
+    return PopupMenuButton<_SyncAction>(
+      tooltip: s.message ?? label,
+      icon: Icon(icon, color: color),
+      onSelected: (a) => _onAction(context, a),
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: _SyncAction.pull,
+          child: _row(Icons.cloud_download_outlined, l10n.syncPull),
         ),
+        PopupMenuItem(
+          value: _SyncAction.push,
+          child: _row(Icons.cloud_upload_outlined, l10n.syncPush),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: _SyncAction.overwriteLocal,
+          child: _row(Icons.download_for_offline_outlined,
+              l10n.syncOverwriteLocal),
+        ),
+        PopupMenuItem(
+          value: _SyncAction.overwriteRemote,
+          child: _row(Icons.cloud_sync_outlined, l10n.syncOverwriteRemote),
+        ),
+      ],
+    );
+  }
+
+  Widget _row(IconData icon, String text) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(width: 12),
+          Text(text),
+        ],
+      );
+
+  Future<void> _onAction(BuildContext context, _SyncAction action) async {
+    final l10n = AppLocalizations.of(context)!;
+    final app = context.read<AppState>();
+    final sync = app.sync;
+    final isOverwrite = action == _SyncAction.overwriteLocal ||
+        action == _SyncAction.overwriteRemote;
+
+    // 覆盖操作二次确认
+    if (isOverwrite) {
+      final file = app.settings.primaryBackend?.filePath ?? 'passwords.log';
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(action == _SyncAction.overwriteLocal
+              ? l10n.syncOverwriteLocal
+              : l10n.syncOverwriteRemote),
+          content: Text(action == _SyncAction.overwriteLocal
+              ? l10n.syncOverwriteLocalConfirm(file)
+              : l10n.syncOverwriteRemoteConfirm(file)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.continueLabel),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    if (!context.mounted) return;
+
+    // 阻塞式等待界面（推送/拉取/覆盖期间）
+    final nav = Navigator.of(context, rootNavigator: true);
+    unawaited(showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const PopScope(
+        canPop: false,
+        child: Center(child: CircularProgressIndicator()),
       ),
+    ));
+
+    try {
+      switch (action) {
+        case _SyncAction.pull:
+          await sync.pullAndMerge();
+        case _SyncAction.push:
+          await sync.pushAll();
+        case _SyncAction.overwriteLocal:
+          await sync.overwriteLocalWithRemote();
+        case _SyncAction.overwriteRemote:
+          await sync.overwriteRemoteWithLocal();
+      }
+    } finally {
+      nav.pop(); // 关闭等待框
+    }
+    if (!context.mounted) return;
+
+    // 结果以最终状态为准：error/offline 视为失败，其余为成功
+    final st = sync.status;
+    final failed =
+        st.state == SyncState.error || st.state == SyncState.offline;
+    final okMsg = switch (action) {
+      _SyncAction.pull => st.message ?? l10n.syncOk,
+      _SyncAction.push => st.message ?? l10n.syncOk,
+      _SyncAction.overwriteLocal => l10n.overwroteLocal,
+      _SyncAction.overwriteRemote => l10n.overwroteRemote,
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(failed ? (st.message ?? l10n.syncError) : okMsg)),
+    );
+  }
+}
+
+// ===================== 顶栏账户菜单（锁定 / 更换密钥） =====================
+
+enum _AccountAction { changeKey, lock }
+
+class _AccountMenu extends StatelessWidget {
+  const _AccountMenu();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return PopupMenuButton<_AccountAction>(
+      icon: const Icon(Icons.lock_outline),
+      tooltip: l10n.accountMenu,
+      onSelected: (a) async {
+        switch (a) {
+          case _AccountAction.changeKey:
+            await showDialog<void>(
+              context: context,
+              builder: (_) => const _ChangeKeyDialog(),
+            );
+          case _AccountAction.lock:
+            context.read<AppState>().lock();
+            Navigator.of(context).popUntil((r) => r.isFirst);
+        }
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: _AccountAction.changeKey,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.key_outlined, size: 20),
+              const SizedBox(width: 12),
+              Text(l10n.changeMasterKey),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: _AccountAction.lock,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, size: 20),
+              const SizedBox(width: 12),
+              Text(l10n.lock),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChangeKeyDialog extends StatefulWidget {
+  const _ChangeKeyDialog();
+
+  @override
+  State<_ChangeKeyDialog> createState() => _ChangeKeyDialogState();
+}
+
+class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
+  final _key = TextEditingController();
+  final _confirm = TextEditingController();
+  late bool _obscure;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    // 与解锁页共用“是否默认明文可见”偏好
+    _obscure = !context.read<AppState>().settings.masterKeyVisible;
+  }
+
+  @override
+  void dispose() {
+    _key.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final l10n = AppLocalizations.of(context)!;
+    // 与解锁一致：留空 → 单空格
+    final newPw = _key.text.isEmpty ? ' ' : _key.text;
+    final confirmPw = _confirm.text.isEmpty ? ' ' : _confirm.text;
+    if (newPw != confirmPw) {
+      setState(() => _error = l10n.masterKeyMismatch);
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    context.read<AppState>().rekey(newPw);
+    Navigator.of(context).pop();
+    messenger.showSnackBar(
+      SnackBar(content: Text(l10n.masterKeyChanged)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return AlertDialog(
+      title: Text(l10n.changeMasterKey),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _key,
+            obscureText: _obscure,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: l10n.newMasterKey,
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                tooltip: _obscure ? l10n.show : l10n.hide,
+                icon: Icon(_obscure
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined),
+                onPressed: () {
+                  setState(() => _obscure = !_obscure);
+                  context
+                      .read<AppState>()
+                      .settings
+                      .setMasterKeyVisible(!_obscure);
+                },
+              ),
+            ),
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _confirm,
+            obscureText: _obscure,
+            onSubmitted: (_) => _submit(),
+            decoration: InputDecoration(
+              labelText: l10n.confirmNewMasterKey,
+              border: const OutlineInputBorder(),
+              errorText: _error,
+            ),
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.changeMasterKeyHint,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(l10n.save),
+        ),
+      ],
     );
   }
 }
@@ -554,7 +816,18 @@ class _ListTab extends StatefulWidget {
 }
 
 class _ListTabState extends State<_ListTab> {
-  _ListSort _sort = _ListSort.nameAsc;
+  late _ListSort _sort;
+
+  @override
+  void initState() {
+    super.initState();
+    _sort = _sortFromName(context.read<AppState>().settings.listSort);
+  }
+
+  _ListSort _sortFromName(String name) => _ListSort.values.firstWhere(
+        (e) => e.name == name,
+        orElse: () => _ListSort.nameAsc,
+      );
 
   int _compare(LogRecord a, LogRecord b) {
     switch (_sort) {
@@ -667,7 +940,10 @@ class _ListTabState extends State<_ListTab> {
               PopupMenuButton<_ListSort>(
                 initialValue: _sort,
                 tooltip: l10n.sortTooltip,
-                onSelected: (v) => setState(() => _sort = v),
+                onSelected: (v) {
+                  setState(() => _sort = v);
+                  context.read<AppState>().settings.setListSort(v.name);
+                },
                 itemBuilder: (_) => [
                   for (final s in _ListSort.values)
                     PopupMenuItem(value: s, child: Text(_sortLabel(l10n, s))),

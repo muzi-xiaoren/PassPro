@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../settings/app_settings.dart';
 import '../sync/git_backend.dart';
 import '../sync/sync_backend.dart';
+import '../sync/webdav_backend.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -54,6 +55,7 @@ class SettingsPage extends StatelessWidget {
           if (settings.cloudEnabled) ...[
             _BackendTile(kind: BackendKind.github),
             _BackendTile(kind: BackendKind.gitee),
+            _BackendTile(kind: BackendKind.webdav),
             const Divider(),
             _SectionHeader(l10n.sectionSyncPrompt),
             SwitchListTile(
@@ -167,13 +169,21 @@ class _BackendTile extends StatelessWidget {
 
   final BackendKind kind;
 
-  String get _name => kind == BackendKind.github ? 'GitHub' : 'Gitee';
+  String get _name => switch (kind) {
+        BackendKind.github => 'GitHub',
+        BackendKind.gitee => 'Gitee',
+        BackendKind.webdav => 'WebDAV',
+      };
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<AppSettings>();
     final l10n = AppLocalizations.of(context)!;
-    final cfg = kind == BackendKind.github ? settings.github : settings.gitee;
+    final cfg = switch (kind) {
+      BackendKind.github => settings.github,
+      BackendKind.gitee => settings.gitee,
+      BackendKind.webdav => settings.webdav,
+    };
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -184,7 +194,7 @@ class _BackendTile extends StatelessWidget {
         title: Text(_name),
         subtitle: Text(
           cfg.enabled
-              ? '${cfg.role == BackendRole.primary ? "Primary" : "Mirror"} · ${cfg.owner}/${cfg.repo}'
+              ? '${cfg.role == BackendRole.primary ? "Primary" : "Mirror"} · ${kind == BackendKind.webdav ? cfg.repo : "${cfg.owner}/${cfg.repo}"}'
               : l10n.backendDisabled,
         ),
         children: [
@@ -218,6 +228,8 @@ class _BackendFormState extends State<_BackendForm> {
   bool _testing = false;
   String? _testMessage;
   bool _testFailed = false;
+
+  bool get _isWebDav => widget.initial.kind == BackendKind.webdav;
 
   @override
   void initState() {
@@ -253,26 +265,33 @@ class _BackendFormState extends State<_BackendForm> {
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
     final app = context.read<AppState>();
-    final updated = widget.initial.copyWith(
-      enabled: _enabled,
-      role: _role,
-      owner: _owner.text.trim(),
-      repo: _repo.text.trim(),
-      branch: _branch.text.trim().isEmpty
-          ? BackendConfig.defaultBranchFor(widget.initial.kind)
-          : _branch.text.trim(),
-      filePath: _filePath.text.trim().isEmpty
-          ? 'passwords.log'
-          : _filePath.text.trim(),
-    );
-    await app.settings.updateBackend(updated);
-    if (_patChanged && _pat.text.isNotEmpty && _pat.text != '••••••••') {
-      await app.credentials.writePat(widget.initial.kind, _pat.text);
+    try {
+      final updated = widget.initial.copyWith(
+        enabled: _enabled,
+        role: _role,
+        owner: _owner.text.trim(),
+        repo: _repo.text.trim(),
+        branch: _branch.text.trim().isEmpty
+            ? BackendConfig.defaultBranchFor(widget.initial.kind)
+            : _branch.text.trim(),
+        filePath: _filePath.text.trim().isEmpty
+            ? BackendConfig.defaultFilePathFor(widget.initial.kind)
+            : _filePath.text.trim(),
+      );
+      await app.settings.updateBackend(updated);
+      if (_patChanged && _pat.text.isNotEmpty && _pat.text != '••••••••') {
+        await app.credentials.writePat(widget.initial.kind, _pat.text);
+      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.saved)),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存失败: $e')),
+      );
     }
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.saved)),
-    );
   }
 
   Future<void> _test() async {
@@ -295,17 +314,20 @@ class _BackendFormState extends State<_BackendForm> {
           ? BackendConfig.defaultBranchFor(widget.initial.kind)
           : _branch.text.trim(),
       filePath: _filePath.text.trim().isEmpty
-          ? 'passwords.log'
+          ? BackendConfig.defaultFilePathFor(widget.initial.kind)
           : _filePath.text.trim(),
     );
     try {
-      final backend = GitBackend(config: cfg, pat: pat);
+      final backend = _isWebDav
+          ? WebDavBackend(config: cfg, password: pat)
+          : GitBackend(config: cfg, pat: pat);
       final v = await backend.headVersion();
       setState(() {
         _testFailed = false;
+        final shortVersion = v == null || v.length <= 7 ? v : v.substring(0, 7);
         _testMessage = v == null
             ? l10n.testOkNoFile
-            : l10n.testOkSha(v.substring(0, 7));
+            : l10n.testOkSha(shortVersion!);
       });
     } on SyncException catch (e) {
       setState(() {
@@ -358,9 +380,9 @@ class _BackendFormState extends State<_BackendForm> {
         const SizedBox(height: 8),
         TextField(
           controller: _owner,
-          decoration: const InputDecoration(
-            labelText: 'Owner',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: _isWebDav ? '用户名' : 'Owner',
+            border: const OutlineInputBorder(),
             isDense: true,
           ),
         ),
@@ -368,25 +390,29 @@ class _BackendFormState extends State<_BackendForm> {
         TextField(
           controller: _repo,
           decoration: InputDecoration(
-            labelText: l10n.repoName,
+            labelText: _isWebDav ? '服务器地址' : l10n.repoName,
+            hintText: _isWebDav ? 'https://dav.jianguoyun.com/dav/' : null,
             border: const OutlineInputBorder(),
             isDense: true,
           ),
         ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _branch,
-          decoration: InputDecoration(
-            labelText: l10n.branch,
-            border: const OutlineInputBorder(),
-            isDense: true,
+        if (!_isWebDav) ...[
+          const SizedBox(height: 8),
+          TextField(
+            controller: _branch,
+            decoration: InputDecoration(
+              labelText: l10n.branch,
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
           ),
-        ),
+        ],
         const SizedBox(height: 8),
         TextField(
           controller: _filePath,
           decoration: InputDecoration(
-            labelText: l10n.filePath,
+            labelText: _isWebDav ? '远程文件路径' : l10n.filePath,
+            hintText: _isWebDav ? '/PassPro/passwords.log' : null,
             border: const OutlineInputBorder(),
             isDense: true,
           ),
@@ -401,8 +427,8 @@ class _BackendFormState extends State<_BackendForm> {
             _patChanged = true;
           },
           decoration: InputDecoration(
-            labelText: 'Personal Access Token',
-            helperText: l10n.patHelper,
+            labelText: _isWebDav ? '应用密码' : 'Personal Access Token',
+            helperText: _isWebDav ? '坚果云请填写“第三方应用管理”生成的应用密码' : l10n.patHelper,
             border: const OutlineInputBorder(),
             isDense: true,
           ),

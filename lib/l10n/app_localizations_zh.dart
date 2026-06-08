@@ -238,7 +238,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sectionAbout => '关于';
 
   @override
-  String get aboutSubtitle => '版本 0.2.0 · Fernet 兼容旧版加密文件';
+  String get aboutSubtitle =>
+      'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro';
 
   @override
   String compactDone(int count, String size) {
@@ -318,4 +319,59 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get dontPromptThisSession => '本次会话内不再提示';
+
+  @override
+  String get syncMenu => '同步';
+
+  @override
+  String get syncPull => '拉取并合并';
+
+  @override
+  String get syncPush => '推送当前数据';
+
+  @override
+  String get syncOverwriteLocal => '用云端覆盖本地';
+
+  @override
+  String get syncOverwriteRemote => '用本地覆盖云端';
+
+  @override
+  String syncOverwriteLocalConfirm(String file) {
+    return '这会用云端的 $file 覆盖本地数据，本地未推送的修改会丢失。是否继续？';
+  }
+
+  @override
+  String syncOverwriteRemoteConfirm(String file) {
+    return '这会用本地数据覆盖云端的 $file，云端当前内容会被覆盖。是否继续？';
+  }
+
+  @override
+  String get continueLabel => '继续';
+
+  @override
+  String get overwroteLocal => '已用云端覆盖本地';
+
+  @override
+  String get overwroteRemote => '已用本地覆盖云端';
+
+  @override
+  String get accountMenu => '账户';
+
+  @override
+  String get changeMasterKey => '更换主密钥';
+
+  @override
+  String get newMasterKey => '新主密钥';
+
+  @override
+  String get confirmNewMasterKey => '确认新主密钥';
+
+  @override
+  String get masterKeyMismatch => '两次输入的主密钥不一致';
+
+  @override
+  String get masterKeyChanged => '主密钥已更换';
+
+  @override
+  String get changeMasterKeyHint => '热更换当前会话使用的主密钥，仅影响之后的加密/解密，不会改动已有条目。';
 }

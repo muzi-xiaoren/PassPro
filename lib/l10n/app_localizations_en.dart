@@ -247,7 +247,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutSubtitle =>
-      'Version 0.2.0 · Fernet-compatible with old encrypted files';
+      'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro';
 
   @override
   String compactDone(int count, String size) {
@@ -330,4 +330,60 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dontPromptThisSession => 'Don\'t prompt again this session';
+
+  @override
+  String get syncMenu => 'Sync';
+
+  @override
+  String get syncPull => 'Pull and merge';
+
+  @override
+  String get syncPush => 'Push current data';
+
+  @override
+  String get syncOverwriteLocal => 'Overwrite local with cloud';
+
+  @override
+  String get syncOverwriteRemote => 'Overwrite cloud with local';
+
+  @override
+  String syncOverwriteLocalConfirm(String file) {
+    return 'This will overwrite local data with $file from the cloud. Unpushed local changes will be lost. Continue?';
+  }
+
+  @override
+  String syncOverwriteRemoteConfirm(String file) {
+    return 'This will overwrite $file in the cloud with your local data. The current cloud content will be replaced. Continue?';
+  }
+
+  @override
+  String get continueLabel => 'Continue';
+
+  @override
+  String get overwroteLocal => 'Local data overwritten with cloud';
+
+  @override
+  String get overwroteRemote => 'Cloud data overwritten with local';
+
+  @override
+  String get accountMenu => 'Account';
+
+  @override
+  String get changeMasterKey => 'Change master key';
+
+  @override
+  String get newMasterKey => 'New master key';
+
+  @override
+  String get confirmNewMasterKey => 'Confirm new master key';
+
+  @override
+  String get masterKeyMismatch => 'The two master keys do not match';
+
+  @override
+  String get masterKeyChanged => 'Master key changed';
+
+  @override
+  String get changeMasterKeyHint =>
+      'Hot-swaps the master key used by the current session. It only affects encryption/decryption from now on and does not modify existing entries.';
 }

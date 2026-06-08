@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:passman_pro/crypto/fernet_crypto.dart';
+import 'package:passpro/crypto/fernet_crypto.dart';
 
 void main() {
   group('FernetCrypto - 与 Python cryptography.fernet 兼容', () {

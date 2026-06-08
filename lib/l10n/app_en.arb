@@ -81,7 +81,7 @@
   "sectionMaintenance": "Maintenance",
   "compactNow": "Compact the log now",
   "sectionAbout": "About",
-  "aboutSubtitle": "Version 0.2.0 · Fernet-compatible with old encrypted files",
+  "aboutSubtitle": "GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro",
   "compactDone": "Compacted: {count} active records, saved {size}",
   "@compactDone": {
     "placeholders": { "count": { "type": "int" }, "size": { "type": "String" } }
@@ -119,5 +119,28 @@
   "pushMessage": "Push to the remote?",
   "push": "Push",
   "later": "Later",
-  "dontPromptThisSession": "Don't prompt again this session"
+  "dontPromptThisSession": "Don't prompt again this session",
+  "syncMenu": "Sync",
+  "syncPull": "Pull and merge",
+  "syncPush": "Push current data",
+  "syncOverwriteLocal": "Overwrite local with cloud",
+  "syncOverwriteRemote": "Overwrite cloud with local",
+  "syncOverwriteLocalConfirm": "This will overwrite local data with {file} from the cloud. Unpushed local changes will be lost. Continue?",
+  "@syncOverwriteLocalConfirm": {
+    "placeholders": { "file": { "type": "String" } }
+  },
+  "syncOverwriteRemoteConfirm": "This will overwrite {file} in the cloud with your local data. The current cloud content will be replaced. Continue?",
+  "@syncOverwriteRemoteConfirm": {
+    "placeholders": { "file": { "type": "String" } }
+  },
+  "continueLabel": "Continue",
+  "overwroteLocal": "Local data overwritten with cloud",
+  "overwroteRemote": "Cloud data overwritten with local",
+  "accountMenu": "Account",
+  "changeMasterKey": "Change master key",
+  "newMasterKey": "New master key",
+  "confirmNewMasterKey": "Confirm new master key",
+  "masterKeyMismatch": "The two master keys do not match",
+  "masterKeyChanged": "Master key changed",
+  "changeMasterKeyHint": "Hot-swaps the master key used by the current session. It only affects encryption/decryption from now on and does not modify existing entries."
 }

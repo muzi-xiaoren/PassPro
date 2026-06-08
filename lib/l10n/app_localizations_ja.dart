@@ -240,7 +240,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get sectionAbout => '情報';
 
   @override
-  String get aboutSubtitle => 'バージョン 0.2.0 · 旧暗号化ファイルと Fernet 互換';
+  String get aboutSubtitle =>
+      'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro';
 
   @override
   String compactDone(int count, String size) {
@@ -320,4 +321,60 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get dontPromptThisSession => '今回のセッションでは表示しない';
+
+  @override
+  String get syncMenu => '同期';
+
+  @override
+  String get syncPull => 'プルしてマージ';
+
+  @override
+  String get syncPush => '現在のデータをプッシュ';
+
+  @override
+  String get syncOverwriteLocal => 'クラウドでローカルを上書き';
+
+  @override
+  String get syncOverwriteRemote => 'ローカルでクラウドを上書き';
+
+  @override
+  String syncOverwriteLocalConfirm(String file) {
+    return 'クラウドの $file でローカルデータを上書きします。プッシュしていないローカルの変更は失われます。続行しますか？';
+  }
+
+  @override
+  String syncOverwriteRemoteConfirm(String file) {
+    return 'ローカルデータでクラウドの $file を上書きします。現在のクラウドの内容は置き換えられます。続行しますか？';
+  }
+
+  @override
+  String get continueLabel => '続行';
+
+  @override
+  String get overwroteLocal => 'クラウドでローカルを上書きしました';
+
+  @override
+  String get overwroteRemote => 'ローカルでクラウドを上書きしました';
+
+  @override
+  String get accountMenu => 'アカウント';
+
+  @override
+  String get changeMasterKey => 'マスターキーを変更';
+
+  @override
+  String get newMasterKey => '新しいマスターキー';
+
+  @override
+  String get confirmNewMasterKey => '新しいマスターキーの確認';
+
+  @override
+  String get masterKeyMismatch => '2つのマスターキーが一致しません';
+
+  @override
+  String get masterKeyChanged => 'マスターキーを変更しました';
+
+  @override
+  String get changeMasterKeyHint =>
+      '現在のセッションで使用するマスターキーを切り替えます。以降の暗号化/復号にのみ影響し、既存のエントリは変更されません。';
 }

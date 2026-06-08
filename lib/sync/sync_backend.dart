@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import '../settings/app_settings.dart';
 
-/// 抽象远端仓库后端。GitHub / Gitee 都用 REST API 上传单个文件。
+/// 抽象远端后端。GitHub / Gitee / WebDAV 都按单个日志文件同步。
 abstract class SyncBackend {
   BackendKind get kind;
   BackendConfig get config;

@@ -9,8 +9,11 @@ class SecureCredentialStore {
 
   final FlutterSecureStorage _storage;
 
-  static String _key(BackendKind kind) =>
-      kind == BackendKind.github ? 'pat_github' : 'pat_gitee';
+  static String _key(BackendKind kind) => switch (kind) {
+        BackendKind.github => 'pat_github',
+        BackendKind.gitee => 'pat_gitee',
+        BackendKind.webdav => 'password_webdav',
+      };
 
   Future<String?> readPat(BackendKind kind) =>
       _storage.read(key: _key(kind));

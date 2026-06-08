@@ -248,7 +248,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get aboutSubtitle =>
-      'Версия 0.2.0 · Совместимо по Fernet со старыми зашифрованными файлами';
+      'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro';
 
   @override
   String compactDone(int count, String size) {
@@ -331,4 +331,60 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dontPromptThisSession => 'Не спрашивать снова в этой сессии';
+
+  @override
+  String get syncMenu => 'Синхронизация';
+
+  @override
+  String get syncPull => 'Загрузить и объединить';
+
+  @override
+  String get syncPush => 'Отправить текущие данные';
+
+  @override
+  String get syncOverwriteLocal => 'Перезаписать локальные данные облаком';
+
+  @override
+  String get syncOverwriteRemote => 'Перезаписать облако локальными данными';
+
+  @override
+  String syncOverwriteLocalConfirm(String file) {
+    return 'Локальные данные будут перезаписаны файлом $file из облака. Неотправленные локальные изменения будут потеряны. Продолжить?';
+  }
+
+  @override
+  String syncOverwriteRemoteConfirm(String file) {
+    return 'Файл $file в облаке будет перезаписан локальными данными. Текущее содержимое облака будет заменено. Продолжить?';
+  }
+
+  @override
+  String get continueLabel => 'Продолжить';
+
+  @override
+  String get overwroteLocal => 'Локальные данные перезаписаны облаком';
+
+  @override
+  String get overwroteRemote => 'Облако перезаписано локальными данными';
+
+  @override
+  String get accountMenu => 'Аккаунт';
+
+  @override
+  String get changeMasterKey => 'Сменить мастер-ключ';
+
+  @override
+  String get newMasterKey => 'Новый мастер-ключ';
+
+  @override
+  String get confirmNewMasterKey => 'Подтвердите новый мастер-ключ';
+
+  @override
+  String get masterKeyMismatch => 'Мастер-ключи не совпадают';
+
+  @override
+  String get masterKeyChanged => 'Мастер-ключ изменён';
+
+  @override
+  String get changeMasterKeyHint =>
+      'Меняет мастер-ключ, используемый в текущем сеансе. Влияет только на последующее шифрование/расшифровку и не изменяет существующие записи.';
 }

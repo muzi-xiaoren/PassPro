@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""从旧 Python 版 password_manager 迁移数据到 Passman Pro (PassPro)。
+"""从旧 Python 版 password_manager 迁移数据到 PassPro。
 
 旧格式（Markdown，每条三行一组）：
     ### website

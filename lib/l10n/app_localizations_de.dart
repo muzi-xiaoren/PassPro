@@ -249,7 +249,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get aboutSubtitle =>
-      'Version 0.2.0 · Fernet-kompatibel mit alten verschlüsselten Dateien';
+      'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro';
 
   @override
   String compactDone(int count, String size) {
@@ -332,4 +332,61 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get dontPromptThisSession => 'In dieser Sitzung nicht mehr fragen';
+
+  @override
+  String get syncMenu => 'Synchronisieren';
+
+  @override
+  String get syncPull => 'Pullen und zusammenführen';
+
+  @override
+  String get syncPush => 'Aktuelle Daten pushen';
+
+  @override
+  String get syncOverwriteLocal => 'Lokal mit Cloud überschreiben';
+
+  @override
+  String get syncOverwriteRemote => 'Cloud mit Lokal überschreiben';
+
+  @override
+  String syncOverwriteLocalConfirm(String file) {
+    return 'Dies überschreibt die lokalen Daten mit $file aus der Cloud. Nicht gepushte lokale Änderungen gehen verloren. Fortfahren?';
+  }
+
+  @override
+  String syncOverwriteRemoteConfirm(String file) {
+    return 'Dies überschreibt $file in der Cloud mit deinen lokalen Daten. Der aktuelle Cloud-Inhalt wird ersetzt. Fortfahren?';
+  }
+
+  @override
+  String get continueLabel => 'Fortfahren';
+
+  @override
+  String get overwroteLocal => 'Lokale Daten mit Cloud überschrieben';
+
+  @override
+  String get overwroteRemote => 'Cloud mit lokalen Daten überschrieben';
+
+  @override
+  String get accountMenu => 'Konto';
+
+  @override
+  String get changeMasterKey => 'Hauptschlüssel ändern';
+
+  @override
+  String get newMasterKey => 'Neuer Hauptschlüssel';
+
+  @override
+  String get confirmNewMasterKey => 'Neuen Hauptschlüssel bestätigen';
+
+  @override
+  String get masterKeyMismatch =>
+      'Die beiden Hauptschlüssel stimmen nicht überein';
+
+  @override
+  String get masterKeyChanged => 'Hauptschlüssel geändert';
+
+  @override
+  String get changeMasterKeyHint =>
+      'Wechselt den in der aktuellen Sitzung verwendeten Hauptschlüssel. Betrifft nur die Ver-/Entschlüsselung ab jetzt und ändert bestehende Einträge nicht.';
 }

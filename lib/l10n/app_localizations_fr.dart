@@ -250,7 +250,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get aboutSubtitle =>
-      'Version 0.2.0 · Compatible Fernet avec les anciens fichiers chiffrés';
+      'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro';
 
   @override
   String compactDone(int count, String size) {
@@ -333,4 +333,60 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dontPromptThisSession => 'Ne plus demander pendant cette session';
+
+  @override
+  String get syncMenu => 'Synchroniser';
+
+  @override
+  String get syncPull => 'Tirer et fusionner';
+
+  @override
+  String get syncPush => 'Pousser les données actuelles';
+
+  @override
+  String get syncOverwriteLocal => 'Écraser le local avec le cloud';
+
+  @override
+  String get syncOverwriteRemote => 'Écraser le cloud avec le local';
+
+  @override
+  String syncOverwriteLocalConfirm(String file) {
+    return 'Cela écrasera les données locales avec $file du cloud. Les modifications locales non poussées seront perdues. Continuer ?';
+  }
+
+  @override
+  String syncOverwriteRemoteConfirm(String file) {
+    return 'Cela écrasera $file dans le cloud avec vos données locales. Le contenu actuel du cloud sera remplacé. Continuer ?';
+  }
+
+  @override
+  String get continueLabel => 'Continuer';
+
+  @override
+  String get overwroteLocal => 'Données locales écrasées par le cloud';
+
+  @override
+  String get overwroteRemote => 'Cloud écrasé par les données locales';
+
+  @override
+  String get accountMenu => 'Compte';
+
+  @override
+  String get changeMasterKey => 'Changer la clé maître';
+
+  @override
+  String get newMasterKey => 'Nouvelle clé maître';
+
+  @override
+  String get confirmNewMasterKey => 'Confirmer la nouvelle clé maître';
+
+  @override
+  String get masterKeyMismatch => 'Les deux clés maîtres ne correspondent pas';
+
+  @override
+  String get masterKeyChanged => 'Clé maître modifiée';
+
+  @override
+  String get changeMasterKeyHint =>
+      'Change la clé maître utilisée par la session actuelle. N\'affecte que le chiffrement/déchiffrement à partir de maintenant et ne modifie pas les entrées existantes.';
 }

@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "passman_pro" "\0"
+            VALUE "FileDescription", "PassPro" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "passman_pro" "\0"
+            VALUE "InternalName", "PassPro" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "passman_pro.exe" "\0"
-            VALUE "ProductName", "passman_pro" "\0"
+            VALUE "OriginalFilename", "PassPro.exe" "\0"
+            VALUE "ProductName", "PassPro" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

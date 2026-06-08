@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
 import '../models/password_entry.dart';
 import '../settings/app_settings.dart';
@@ -14,6 +13,7 @@ import '../storage/log_store.dart';
 import '../storage/memory_index.dart';
 import 'git_backend.dart';
 import 'sync_backend.dart';
+import 'webdav_backend.dart';
 
 /// 同步状态供 UI 展示。
 enum SyncState { idle, working, ok, offline, error }
@@ -79,10 +79,16 @@ class SyncManager extends ChangeNotifier {
 
   Future<SyncBackend?> _resolveBackend(BackendConfig cfg) async {
     if (!cfg.enabled) return null;
-    final pat = await credentials.readPat(cfg.kind);
-    if (pat == null || pat.isEmpty) return null;
-    if (cfg.owner.isEmpty || cfg.repo.isEmpty) return null;
-    return GitBackend(config: cfg, pat: pat);
+    final secret = await credentials.readPat(cfg.kind);
+    if (secret == null || secret.isEmpty) return null;
+    if (cfg.owner.isEmpty || cfg.repo.isEmpty || cfg.filePath.isEmpty) {
+      return null;
+    }
+    return switch (cfg.kind) {
+      BackendKind.github || BackendKind.gitee =>
+        GitBackend(config: cfg, pat: secret),
+      BackendKind.webdav => WebDavBackend(config: cfg, password: secret),
+    };
   }
 
   Future<SyncBackend?> _primary() async {
@@ -280,6 +286,155 @@ class SyncManager extends ChangeNotifier {
       message: mirrorWarnings.isEmpty
           ? '已推送到 primary'
           : '已推送到 primary；mirror: ${mirrorWarnings.join(', ')}',
+    ));
+    return true;
+  }
+
+  /// 用云端覆盖本地：拉取远端快照并**完全替换**本地日志（不合并）。
+  /// 远端不存在 / 为空时不执行（避免误清空本地），返回 false 并置错误状态。
+  Future<bool> overwriteLocalWithRemote() async {
+    if (!settings.cloudEnabled) return false;
+    _setStatus(_status.copyWith(state: SyncState.working));
+
+    final primary = await _primary();
+    final mirrors = await _mirrors();
+
+    SyncBackend? used;
+    RemoteSnapshot? snap;
+    Object? lastError;
+    for (final b in [if (primary != null) primary, ...mirrors]) {
+      try {
+        snap = await b.pull();
+        used = b;
+        break;
+      } catch (e) {
+        lastError = e;
+        continue;
+      }
+    }
+
+    if (snap == null || used == null) {
+      _setStatus(_status.copyWith(
+        state: SyncState.error,
+        message: '所有后端都拉取失败: $lastError',
+      ));
+      return false;
+    }
+
+    if (!snap.exists || snap.content.isEmpty) {
+      _setStatus(_status.copyWith(
+        state: SyncState.error,
+        message: '远端为空，已跳过覆盖（避免误清空本地）',
+      ));
+      return false;
+    }
+
+    final remoteLog = _parseLog(snap.content);
+    await logStore.replaceAll(remoteLog);
+    memoryIndex.replay(remoteLog);
+
+    _knownRemoteVersion = snap.version;
+    remoteHasUpdates = false;
+    _setStatus(_status.copyWith(
+      state: SyncState.ok,
+      lastSyncAt: DateTime.now(),
+      lastRemoteVersion: snap.version,
+      message: '已用 ${used.kind.name} 覆盖本地',
+    ));
+    return true;
+  }
+
+  /// 用本地覆盖云端：以远端**当前**版本为基线强制推送本地内容（覆盖远端，不合并）。
+  /// 返回 true 表示 primary 覆盖成功。
+  Future<bool> overwriteRemoteWithLocal({
+    String commitMessage = 'overwrite from local',
+  }) async {
+    if (!settings.cloudEnabled) return false;
+    _setStatus(_status.copyWith(state: SyncState.working));
+
+    final primary = await _primary();
+    if (primary == null) {
+      _setStatus(_status.copyWith(
+        state: SyncState.error,
+        message: '未配置可用的 Primary 后端',
+      ));
+      return false;
+    }
+
+    final localBytes = await _readLocalBytes();
+
+    Future<PushOutcome> pushWithCurrentHead() async {
+      String? head;
+      try {
+        head = await primary.headVersion();
+      } catch (_) {
+        // 文件不存在等：用 null 基线创建
+      }
+      return primary.push(
+        content: localBytes,
+        baseVersion: head,
+        commitMessage: commitMessage,
+      );
+    }
+
+    PushOutcome outcome;
+    try {
+      outcome = await pushWithCurrentHead();
+      // 远端在读取 head 之后又被改动 → 再取一次最新 head 重推一次
+      if (outcome == PushOutcome.conflict) {
+        outcome = await pushWithCurrentHead();
+      }
+    } on SocketException catch (e) {
+      _setStatus(_status.copyWith(
+        state: SyncState.offline,
+        message: 'primary 离线: $e',
+      ));
+      return false;
+    } catch (e) {
+      _setStatus(_status.copyWith(
+        state: SyncState.error,
+        message: 'primary 覆盖失败: $e',
+      ));
+      return false;
+    }
+
+    if (outcome == PushOutcome.conflict) {
+      _setStatus(_status.copyWith(
+        state: SyncState.error,
+        message: '覆盖失败：远端持续变化，请重试',
+      ));
+      return false;
+    }
+
+    // primary 成功后再尽力覆盖 mirror（同样以各自当前版本为基线）
+    final mirrorWarnings = <String>[];
+    for (final m in await _mirrors()) {
+      try {
+        String? mv;
+        try {
+          mv = await m.headVersion();
+        } catch (_) {}
+        final mo = await m.push(
+          content: localBytes,
+          baseVersion: mv,
+          commitMessage: commitMessage,
+        );
+        if (mo == PushOutcome.conflict) {
+          mirrorWarnings.add('${m.kind.name} 冲突');
+        }
+      } catch (e) {
+        mirrorWarnings.add('${m.kind.name} 失败: $e');
+      }
+    }
+
+    _knownRemoteVersion = await primary.headVersion();
+    _setStatus(_status.copyWith(
+      state: SyncState.ok,
+      lastSyncAt: DateTime.now(),
+      lastRemoteVersion: _knownRemoteVersion,
+      message: mirrorWarnings.isEmpty
+          ? '已用本地覆盖云端'
+          : '已覆盖 primary；mirror: ${mirrorWarnings.join(', ')}',
     ));
     return true;
   }

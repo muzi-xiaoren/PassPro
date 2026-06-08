@@ -1,52 +1,44 @@
-# Passman Pro (PassPro)
+# PassPro
 
 **中文** | [English](README.en.md)
 
-跨平台本地密码管理器，重构自 `password_manager` 项目（Python/Tkinter → Flutter）。
-
-![Build](https://github.com/muzi-xiaoren/PassPro/actions/workflows/build.yml/badge.svg)
-
-## 下载 / 自动构建
-
-每次推送到 `main` 都会通过 GitHub Actions 并行构建四个平台，产物可在
-[Actions 运行页面](https://github.com/muzi-xiaoren/PassPro/actions) 底部的 **Artifacts** 下载：
-
-| 产物 | 文件 | 说明 |
-|---|---|---|
-| Android | `PassPro-Android-APK`（app-release.apk） | 可直接侧载安装 |
-| Windows | `PassPro-Windows.zip` | 解压后运行 `passman_pro.exe` |
-| macOS | `PassPro-macOS.zip` | 解压得到 `.app`（首次打开需右键→打开绕过 Gatekeeper） |
-| iOS | `PassPro-iOS-unsigned.zip` | **未签名**，需 Apple 开发者证书重新签名后才能装真机 |
-
-> 也可在 Actions 页面点 **Run workflow** 手动触发构建。
+跨平台本地密码管理器。
 
 ## 设计要点
 
-- **核心加密算法不变**：仍是 SHA-256 派生 + Fernet 对称加密，**100% 兼容旧 Python 版本生成的密文**
+- **加密**：SHA-256 派生 + Fernet 对称加密
 - **存储**：append-only 行式日志（一行一个操作）+ 内存索引，CRUD 全部 O(1)，启动一次性 replay
 - **整理**：放大率达到阈值或手动按钮触发 compaction，把"操作历史"折叠成"最新快照"
-- **同步**：可选；GitHub + Gitee 双后端，**Primary + Mirror（A2 故障切换）** 模式
+- **同步**：可选；支持 GitHub、Gitee、WebDAV / 坚果云，采用 **Primary + Mirror** 模式
   - Primary 是真相源，pull/push 都先走 primary
   - Primary 不可达时自动降级从 Mirror 拉取
   - push 永远先写 Primary，再尽力推 Mirror
 - **同步提示**：新增 / 修改 / 删除 操作前后提示"拉取 / 推送"，可在设置里关闭
-  - 智能跳过：远端 sha 与上次一致时自动跳过"拉取"提示
+  - 智能跳过：远端版本与上次一致时自动跳过"拉取"提示
   - "本次会话不再提示" 一键关闭直到下次启动
 
-## 平台
+## 数据存放位置
 
-| 平台 | 支持 | 备注 |
-|---|---|---|
-| Android | ✅ | `flutter build apk` |
-| Windows | ✅ | `flutter build windows` |
-| macOS | ✅ | `flutter build macos` |
-| Linux | ✅（顺带） | `flutter build linux` |
-| iOS | 暂不优先 | 代码可跑，但未做发版打磨 |
+加密日志文件名固定为 `passwords.log`，位于各平台「应用支持目录」下的 `PassPro/` 子目录中
+（由 `path_provider` 的 `getApplicationSupportDirectory()` 决定，路径与包名 `com.example.PassPro` 绑定）：
+
+
+| 平台      | 实际路径                                                                                                                                            |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS   | `~/Library/Containers/com.example.PassPro/Data/Library/Application Support/com.example.PassPro/PassPro/passwords.log`（App 已开启沙盒，落在 Container 内） |
+| Windows | `%APPDATA%\com.example\PassPro\PassPro\passwords.log`（即 `C:\Users\<用户名>\AppData\Roaming\com.example\PassPro\PassPro\passwords.log`）             |
+| Linux   | `~/.local/share/passpro/PassPro/passwords.log`（遵循 `XDG_DATA_HOME`）                                                                              |
+| Android | 应用私有目录 `…/files/PassPro/passwords.log`（如 `/data/data/com.example.PassPro/files/PassPro/`，需 root 才能直接访问）                                         |
+| iOS     | 应用沙盒 `…/Library/Application Support/PassPro/passwords.log`（通过「文件 App / 设备备份」访问）                                                                 |
+
+
+> 不确定真实路径时，先启动一次 App 并写入一条数据，再用文件管理器搜索 `passwords.log`。
+> 主密钥永不落盘；Token / 应用密码存于系统钥匙串，也不在上述目录里。
 
 ## 目录结构
 
 ```
-passman_pro/
+PassPro/
 ├── lib/
 │   ├── main.dart                 # 入口
 │   ├── app_state.dart            # 全局状态 + 主密钥
@@ -63,10 +55,11 @@ passman_pro/
 │   ├── sync/
 │   │   ├── sync_backend.dart     # 抽象接口
 │   │   ├── git_backend.dart      # GitHub/Gitee 共用实现
+│   │   ├── webdav_backend.dart   # WebDAV/坚果云实现
 │   │   └── sync_manager.dart     # 主备调度 + 状态
 │   ├── settings/
 │   │   ├── app_settings.dart     # SharedPreferences
-│   │   └── secure_credential_store.dart  # PAT 走 OS Keychain
+│   │   └── secure_credential_store.dart  # Token / 应用密码走 OS Keychain
 │   └── ui/
 │       ├── master_key_page.dart
 │       ├── home_page.dart        # 查询 / 新增 / 列表 三 Tab
@@ -74,10 +67,8 @@ passman_pro/
 │       ├── sync_prompts.dart
 │       └── password_generator.dart
 ├── test/
-│   ├── crypto_compat_test.dart   # ⭐ 验证能解开 Python 旧密文
+│   ├── crypto_compat_test.dart
 │   └── merge_test.dart
-└── tools/
-    └── verify_with_python.py     # 反向验证脚本
 ```
 
 ## 准备环境
@@ -88,11 +79,11 @@ brew install --cask flutter
 flutter doctor                    # 按提示装齐 Xcode / Android Studio 组件
 
 # 2. 拉依赖
-cd passman_pro
+cd PassPro
 flutter pub get
 
-# 3. 跑测试（最关键的兼容性测试）
-flutter test test/crypto_compat_test.dart
+# 3. 跑测试
+flutter test
 
 # 4. 本机运行
 flutter run -d macos              # 桌面调试
@@ -109,49 +100,58 @@ flutter build apk --release        # build/app/outputs/flutter-apk/app-release.a
 flutter build windows --release    # build/windows/x64/runner/Release/
 
 # macOS
-flutter build macos --release      # build/macos/Build/Products/Release/passman_pro.app
+flutter build macos --release      # build/macos/Build/Products/Release/PassPro.app
 ```
 
-## 数据迁移（从旧 Python 版本）
+## 同步配置
 
-旧版数据在 `~/password_person/passwords.txt`，每行格式 `website,username,encrypted_password`。
-新版日志格式不同（JSON Lines），但 **加密算法完全相同**，密文字段直接复制即可，
-无需解密重加密。一次性迁移脚本已就绪：`tools/migrate_from_old.py`。
+PassPro 会把加密日志 `passwords.log` 同步到远程位置。建议至少配置一个
+**Primary** 后端；可选再配置一个 **Mirror** 作为备份。
 
-```bash
-# 预览（不写文件），默认读 ~/password_person/passwords.txt
-python3 tools/migrate_from_old.py --dry-run
+### GitHub
 
-# 生成新日志（默认输出当前目录 ./passwords.log），自动去重完全相同的条目
-python3 tools/migrate_from_old.py
+1. 新建一个 **私有仓库**（例：`passpro`）。
+2. 创建 Fine-grained token：
+  - Repository access：只选择该私有仓库
+  - Repository permissions → Contents：Read and write
+3. App 设置页填写：
+  - Role：Primary
+  - Owner：GitHub 用户名
+  - Repo：仓库名
+  - Branch：`main`
+  - File path：`passwords.log`
+  - Token：GitHub token
 
-# 指定输入 / 输出
-python3 tools/migrate_from_old.py --in /path/old.txt --out /path/passwords.log
-```
+### Gitee
 
-生成 `passwords.log` 后，放到 App 数据目录（建议在 App 从未写入数据时操作，避免覆盖）。
+1. 新建一个 **私有仓库**（例：`passpro`）。
+2. 创建私人令牌，权限选择 `projects`。
+3. App 设置页填写：
+  - Role：Mirror（也可作为 Primary）
+  - Owner：Gitee 用户名
+  - Repo：仓库名
+  - Branch：`master`
+  - File path：`passwords.log`
+  - Token：Gitee 私人令牌
 
-新版日志位置：
-- macOS: `~/Library/Application Support/PassPro/passwords.log`
-  （path_provider 在 macOS 上可能嵌套 bundle id，实际可能是
-  `~/Library/Application Support/<bundle-id>/PassPro/passwords.log`，迁移前先启动一次 App 确认真实路径）
-- Windows: `%APPDATA%\PassPro\passwords.log`
-- Linux: `~/.local/share/PassPro/passwords.log`
-- Android: app 私有目录（不可直接访问）
+### WebDAV / 坚果云
 
-## 同步配置（GitHub + Gitee）
+1. 注册坚果云账号。
+2. 在坚果云「账户设置 → 安全选项 → 第三方应用管理」创建应用密码。
+3. App 设置页填写：
+  - Role：Primary 或 Mirror
+  - 用户名：坚果云账号邮箱
+  - 服务器地址：`https://dav.jianguoyun.com/dav/`
+  - 远程文件路径：`/PassPro/passwords.log`
+  - 应用密码：坚果云生成的应用密码
 
-1. 去 GitHub / Gitee 创建一个 **私有仓库**（例：`my-passwords-vault`）
-2. GitHub：Settings → Developer settings → Personal access tokens → **Fine-grained tokens**
-   - Repository access: Only `my-passwords-vault`
-   - Permissions: Contents → Read and write
-3. Gitee：设置 → 私人令牌 → 选 `projects` 权限
-4. App 设置页：分别填入 owner/repo/branch/file path + PAT，标记角色 (Primary / Mirror)
-5. 点 "测试连接" 确认配通
+WebDAV 不需要提前创建文件夹或 `passwords.log`，首次推送时 App 会自动创建。
+
+配置完成后，点击「测试连接」确认可用；第一次同步建议先确认本地列表正常，再执行「推送」。
 
 ## 安全说明
 
 - 主密钥永远不存盘，只在内存
-- PAT 走 OS Keychain（Android Keystore / Win DPAPI / macOS Keychain）
+- Token / 应用密码走 OS Keychain（Android Keystore / Win DPAPI / macOS Keychain）
 - 同步到云端的是密文日志；即使 token 泄漏，攻击者拿不到主密钥也无法解密
-- **第一版限制**：website / username 字段在日志里是**明文**（兼容旧文件）；如果用 GitHub 私有仓库，仓库管理员能看到你访问过的网站列表。这是已知折衷，第二阶段会加可选的"全字段加密"
+

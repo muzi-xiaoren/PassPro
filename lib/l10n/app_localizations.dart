@@ -561,7 +561,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Version 0.2.0 · Fernet-compatible with old encrypted files'**
+  /// **'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro'**
   String get aboutSubtitle;
 
   /// No description provided for @compactDone.
@@ -701,6 +701,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Don\'t prompt again this session'**
   String get dontPromptThisSession;
+
+  /// No description provided for @syncMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get syncMenu;
+
+  /// No description provided for @syncPull.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull and merge'**
+  String get syncPull;
+
+  /// No description provided for @syncPush.
+  ///
+  /// In en, this message translates to:
+  /// **'Push current data'**
+  String get syncPush;
+
+  /// No description provided for @syncOverwriteLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrite local with cloud'**
+  String get syncOverwriteLocal;
+
+  /// No description provided for @syncOverwriteRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrite cloud with local'**
+  String get syncOverwriteRemote;
+
+  /// No description provided for @syncOverwriteLocalConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'This will overwrite local data with {file} from the cloud. Unpushed local changes will be lost. Continue?'**
+  String syncOverwriteLocalConfirm(String file);
+
+  /// No description provided for @syncOverwriteRemoteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'This will overwrite {file} in the cloud with your local data. The current cloud content will be replaced. Continue?'**
+  String syncOverwriteRemoteConfirm(String file);
+
+  /// No description provided for @continueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get continueLabel;
+
+  /// No description provided for @overwroteLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Local data overwritten with cloud'**
+  String get overwroteLocal;
+
+  /// No description provided for @overwroteRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud data overwritten with local'**
+  String get overwroteRemote;
+
+  /// No description provided for @accountMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get accountMenu;
+
+  /// No description provided for @changeMasterKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Change master key'**
+  String get changeMasterKey;
+
+  /// No description provided for @newMasterKey.
+  ///
+  /// In en, this message translates to:
+  /// **'New master key'**
+  String get newMasterKey;
+
+  /// No description provided for @confirmNewMasterKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm new master key'**
+  String get confirmNewMasterKey;
+
+  /// No description provided for @masterKeyMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The two master keys do not match'**
+  String get masterKeyMismatch;
+
+  /// No description provided for @masterKeyChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Master key changed'**
+  String get masterKeyChanged;
+
+  /// No description provided for @changeMasterKeyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hot-swaps the master key used by the current session. It only affects encryption/decryption from now on and does not modify existing entries.'**
+  String get changeMasterKeyHint;
 }
 
 class _AppLocalizationsDelegate

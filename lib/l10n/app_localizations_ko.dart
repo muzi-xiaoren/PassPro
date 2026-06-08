@@ -240,7 +240,8 @@ class AppLocalizationsKo extends AppLocalizations {
   String get sectionAbout => '정보';
 
   @override
-  String get aboutSubtitle => '버전 0.2.0 · 구 암호화 파일과 Fernet 호환';
+  String get aboutSubtitle =>
+      'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro';
 
   @override
   String compactDone(int count, String size) {
@@ -320,4 +321,60 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get dontPromptThisSession => '이번 세션에서는 다시 표시 안 함';
+
+  @override
+  String get syncMenu => '동기화';
+
+  @override
+  String get syncPull => '풀 후 병합';
+
+  @override
+  String get syncPush => '현재 데이터 푸시';
+
+  @override
+  String get syncOverwriteLocal => '클라우드로 로컬 덮어쓰기';
+
+  @override
+  String get syncOverwriteRemote => '로컬로 클라우드 덮어쓰기';
+
+  @override
+  String syncOverwriteLocalConfirm(String file) {
+    return '클라우드의 $file(으)로 로컬 데이터를 덮어씁니다. 푸시하지 않은 로컬 변경 사항은 사라집니다. 계속하시겠습니까?';
+  }
+
+  @override
+  String syncOverwriteRemoteConfirm(String file) {
+    return '로컬 데이터로 클라우드의 $file을(를) 덮어씁니다. 현재 클라우드 내용이 대체됩니다. 계속하시겠습니까?';
+  }
+
+  @override
+  String get continueLabel => '계속';
+
+  @override
+  String get overwroteLocal => '클라우드로 로컬을 덮어썼습니다';
+
+  @override
+  String get overwroteRemote => '로컬로 클라우드를 덮어썼습니다';
+
+  @override
+  String get accountMenu => '계정';
+
+  @override
+  String get changeMasterKey => '마스터 키 변경';
+
+  @override
+  String get newMasterKey => '새 마스터 키';
+
+  @override
+  String get confirmNewMasterKey => '새 마스터 키 확인';
+
+  @override
+  String get masterKeyMismatch => '두 마스터 키가 일치하지 않습니다';
+
+  @override
+  String get masterKeyChanged => '마스터 키를 변경했습니다';
+
+  @override
+  String get changeMasterKeyHint =>
+      '현재 세션에서 사용하는 마스터 키를 교체합니다. 이후의 암호화/복호화에만 영향을 주며 기존 항목은 변경되지 않습니다.';
 }

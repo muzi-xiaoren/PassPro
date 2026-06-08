@@ -5,7 +5,7 @@ import 'dart:ui' show Locale;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum BackendKind { github, gitee }
+enum BackendKind { github, gitee, webdav }
 
 enum BackendRole { primary, mirror }
 
@@ -67,12 +67,21 @@ class BackendConfig {
       owner: j['owner'] as String? ?? '',
       repo: j['repo'] as String? ?? '',
       branch: j['branch'] as String? ?? defaultBranchFor(kind),
-      filePath: j['filePath'] as String? ?? 'passwords.log',
+      filePath: j['filePath'] as String? ?? defaultFilePathFor(kind),
     );
   }
 
-  static String defaultBranchFor(BackendKind kind) =>
-      kind == BackendKind.gitee ? 'master' : 'main';
+  static String defaultBranchFor(BackendKind kind) => switch (kind) {
+        BackendKind.gitee => 'master',
+        BackendKind.webdav => '',
+        BackendKind.github => 'main',
+      };
+
+  static String defaultFilePathFor(BackendKind kind) =>
+      kind == BackendKind.webdav ? '/PassPro/passwords.log' : 'passwords.log';
+
+  static String defaultRepoFor(BackendKind kind) =>
+      kind == BackendKind.webdav ? 'https://dav.jianguoyun.com/dav/' : '';
 }
 
 class AppSettings extends ChangeNotifier {
@@ -84,7 +93,10 @@ class AppSettings extends ChangeNotifier {
   static const _kSmartSkip = 'smart_skip';
   static const _kBackendGithub = 'backend_github_json';
   static const _kBackendGitee = 'backend_gitee_json';
+  static const _kBackendWebDav = 'backend_webdav_json';
   static const _kLocale = 'locale_code';
+  static const _kListSort = 'list_sort';
+  static const _kMasterKeyVisible = 'master_key_visible';
 
   final SharedPreferences _prefs;
 
@@ -104,24 +116,37 @@ class AppSettings extends ChangeNotifier {
   /// 供 MaterialApp.locale 使用；null = 跟随系统。
   Locale? get locale => localeCode.isEmpty ? null : Locale(localeCode);
 
+  /// 列表排序方式（持久化，按 _ListSort.name 存储）。默认按名称升序。
+  String get listSort => _prefs.getString(_kListSort) ?? 'nameAsc';
+
+  /// 主密钥输入框是否默认明文可见（持久化）。默认 false（隐藏）。
+  /// 解锁页与“更换密钥”弹窗共用此偏好。
+  bool get masterKeyVisible => _prefs.getBool(_kMasterKeyVisible) ?? false;
+
   BackendConfig get github => _loadBackend(_kBackendGithub, BackendKind.github);
   BackendConfig get gitee => _loadBackend(_kBackendGitee, BackendKind.gitee);
+  BackendConfig get webdav => _loadBackend(_kBackendWebDav, BackendKind.webdav);
 
   BackendConfig _loadBackend(String key, BackendKind kind) {
     final raw = _prefs.getString(key);
     if (raw == null) {
       return BackendConfig(
         kind: kind,
-        role: kind == BackendKind.github
-            ? BackendRole.primary
-            : BackendRole.mirror,
+        role: kind == BackendKind.github ? BackendRole.primary : BackendRole.mirror,
         branch: BackendConfig.defaultBranchFor(kind),
+        repo: BackendConfig.defaultRepoFor(kind),
+        filePath: BackendConfig.defaultFilePathFor(kind),
       );
     }
     try {
       return BackendConfig.fromJson(jsonDecode(raw) as Map<String, Object?>);
     } catch (_) {
-      return BackendConfig(kind: kind);
+      return BackendConfig(
+        kind: kind,
+        branch: BackendConfig.defaultBranchFor(kind),
+        repo: BackendConfig.defaultRepoFor(kind),
+        filePath: BackendConfig.defaultFilePathFor(kind),
+      );
     }
   }
 
@@ -130,6 +155,7 @@ class AppSettings extends ChangeNotifier {
     if (!cloudEnabled) return null;
     if (github.enabled && github.role == BackendRole.primary) return github;
     if (gitee.enabled && gitee.role == BackendRole.primary) return gitee;
+    if (webdav.enabled && webdav.role == BackendRole.primary) return webdav;
     return null;
   }
 
@@ -139,6 +165,7 @@ class AppSettings extends ChangeNotifier {
     final out = <BackendConfig>[];
     if (github.enabled && github.role == BackendRole.mirror) out.add(github);
     if (gitee.enabled && gitee.role == BackendRole.mirror) out.add(gitee);
+    if (webdav.enabled && webdav.role == BackendRole.mirror) out.add(webdav);
     return out;
   }
 
@@ -162,6 +189,18 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 持久化列表排序方式（_ListSort.name）。
+  Future<void> setListSort(String name) async {
+    await _prefs.setString(_kListSort, name);
+    notifyListeners();
+  }
+
+  /// 持久化“主密钥是否默认可见”。仅在解锁/换钥页打开时按需读取，
+  /// 无需触发全局重建，故不调用 notifyListeners。
+  Future<void> setMasterKeyVisible(bool v) async {
+    await _prefs.setBool(_kMasterKeyVisible, v);
+  }
+
   /// 设置界面语言；传空字符串表示跟随系统。
   Future<void> setLocale(String code) async {
     if (code.isEmpty) {
@@ -173,9 +212,11 @@ class AppSettings extends ChangeNotifier {
   }
 
   Future<void> updateBackend(BackendConfig config) async {
-    final key = config.kind == BackendKind.github
-        ? _kBackendGithub
-        : _kBackendGitee;
+    final key = switch (config.kind) {
+      BackendKind.github => _kBackendGithub,
+      BackendKind.gitee => _kBackendGitee,
+      BackendKind.webdav => _kBackendWebDav,
+    };
     await _prefs.setString(key, jsonEncode(config.toJson()));
     notifyListeners();
   }

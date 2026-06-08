@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:passman_pro/models/password_entry.dart';
-import 'package:passman_pro/storage/conflict_merger.dart';
+import 'package:passpro/models/password_entry.dart';
+import 'package:passpro/storage/conflict_merger.dart';
 
 void main() {
   group('conflict_merger', () {

@@ -45,6 +45,14 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 热更换当前会话使用的主密钥（不重新加密已有条目）。
+  /// 仅影响之后的加密/解密：之前用旧密钥写入的条目仍需旧密钥才能解密。
+  void rekey(String newMasterPassword) {
+    _masterPasswordDisplay = newMasterPassword;
+    _masterKey = FernetCrypto.deriveKey(newMasterPassword);
+    notifyListeners();
+  }
+
   void lock() {
     _masterKey = null;
     _masterPasswordDisplay = null;

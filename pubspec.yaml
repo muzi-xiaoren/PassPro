@@ -1,4 +1,4 @@
-name: passman_pro
+name: passpro
 description: 跨平台本地密码管理器，兼容旧 Python Fernet 加密文件，支持 GitHub/Gitee 双仓库同步。
 publish_to: 'none'
 version: 0.2.0+2

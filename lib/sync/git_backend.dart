@@ -38,6 +38,7 @@ class GitBackend implements SyncBackend {
   String get _host => switch (kind) {
         BackendKind.github => 'https://api.github.com',
         BackendKind.gitee => 'https://gitee.com/api/v5',
+        BackendKind.webdav => throw StateError('WebDAV does not use GitBackend'),
       };
 
   Uri _contentsUri({String? ref}) {
