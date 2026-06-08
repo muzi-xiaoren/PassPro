@@ -284,6 +284,74 @@ class AppLocalizationsDe extends AppLocalizations {
       'Im Schlüsselbund des Betriebssystems gespeichert; wird nie in eine Datei geschrieben';
 
   @override
+  String syncAllBackendsPullFailed(String detail) {
+    return 'Alle Backends konnten nicht abrufen: $detail';
+  }
+
+  @override
+  String syncPulledFrom(String backend) {
+    return 'Von $backend abgerufen';
+  }
+
+  @override
+  String get syncNoPrimary => 'Kein nutzbares Primär-Backend konfiguriert';
+
+  @override
+  String syncPrimaryOffline(String detail) {
+    return 'Primär offline: $detail';
+  }
+
+  @override
+  String syncPrimaryPushFailed(String detail) {
+    return 'Primär-Push fehlgeschlagen: $detail';
+  }
+
+  @override
+  String get syncPushConflictManual =>
+      'Push-Konflikt; automatische Zusammenführung fehlgeschlagen – bitte manuell synchronisieren';
+
+  @override
+  String get syncPushedPrimary => 'Zum Primär gepusht';
+
+  @override
+  String get syncRemoteEmptySkipped =>
+      'Remote ist leer; Überschreiben übersprungen (um lokale Daten nicht zu löschen)';
+
+  @override
+  String syncOverwroteLocalFrom(String backend) {
+    return 'Lokal von $backend überschrieben';
+  }
+
+  @override
+  String syncPrimaryOverwriteFailed(String detail) {
+    return 'Primär-Überschreiben fehlgeschlagen: $detail';
+  }
+
+  @override
+  String get syncOverwriteRemoteStillChanging =>
+      'Überschreiben fehlgeschlagen: Remote ändert sich ständig, bitte erneut versuchen';
+
+  @override
+  String get syncOverwroteRemoteWithLocal => 'Remote mit lokal überschrieben';
+
+  @override
+  String syncGenericError(String detail) {
+    return 'Fehler: $detail';
+  }
+
+  @override
+  String get syncMirrorsLabel => 'Spiegel';
+
+  @override
+  String get syncMirrorOk => 'ok';
+
+  @override
+  String get syncMirrorConflict => 'Konflikt';
+
+  @override
+  String get syncMirrorFailed => 'fehlgeschlagen';
+
+  @override
   String repoNotFoundOrNoAccess(String repo) {
     return 'Repository nicht gefunden oder Token hat keinen Zugriff: $repo';
   }

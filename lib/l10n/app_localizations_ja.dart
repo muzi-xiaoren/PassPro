@@ -275,6 +275,72 @@ class AppLocalizationsJa extends AppLocalizations {
   String get patHelper => 'OSキーチェーンに保存され、ファイルには書き込まれません';
 
   @override
+  String syncAllBackendsPullFailed(String detail) {
+    return 'すべてのバックエンドで取得に失敗：$detail';
+  }
+
+  @override
+  String syncPulledFrom(String backend) {
+    return '$backend から取得しました';
+  }
+
+  @override
+  String get syncNoPrimary => '利用可能なプライマリバックエンドが未設定です';
+
+  @override
+  String syncPrimaryOffline(String detail) {
+    return 'プライマリがオフライン：$detail';
+  }
+
+  @override
+  String syncPrimaryPushFailed(String detail) {
+    return 'プライマリへの送信に失敗：$detail';
+  }
+
+  @override
+  String get syncPushConflictManual => '送信が競合し、自動マージに失敗しました。手動で同期してください';
+
+  @override
+  String get syncPushedPrimary => 'プライマリに送信しました';
+
+  @override
+  String get syncRemoteEmptySkipped => 'リモートが空のため上書きをスキップ（ローカル消失を防止）';
+
+  @override
+  String syncOverwroteLocalFrom(String backend) {
+    return '$backend でローカルを上書きしました';
+  }
+
+  @override
+  String syncPrimaryOverwriteFailed(String detail) {
+    return 'プライマリの上書きに失敗：$detail';
+  }
+
+  @override
+  String get syncOverwriteRemoteStillChanging =>
+      '上書き失敗：リモートが変化し続けています。再試行してください';
+
+  @override
+  String get syncOverwroteRemoteWithLocal => 'ローカルでリモートを上書きしました';
+
+  @override
+  String syncGenericError(String detail) {
+    return 'エラー：$detail';
+  }
+
+  @override
+  String get syncMirrorsLabel => 'ミラー';
+
+  @override
+  String get syncMirrorOk => '成功';
+
+  @override
+  String get syncMirrorConflict => '競合';
+
+  @override
+  String get syncMirrorFailed => '失敗';
+
+  @override
   String repoNotFoundOrNoAccess(String repo) {
     return 'リポジトリが見つからないか、トークンにアクセス権がありません：$repo';
   }

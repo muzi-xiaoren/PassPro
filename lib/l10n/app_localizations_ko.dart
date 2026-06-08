@@ -275,6 +275,72 @@ class AppLocalizationsKo extends AppLocalizations {
   String get patHelper => 'OS 키체인에 저장되며 어떤 파일에도 기록되지 않습니다';
 
   @override
+  String syncAllBackendsPullFailed(String detail) {
+    return '모든 백엔드에서 가져오기 실패: $detail';
+  }
+
+  @override
+  String syncPulledFrom(String backend) {
+    return '$backend에서 가져왔습니다';
+  }
+
+  @override
+  String get syncNoPrimary => '사용 가능한 기본 백엔드가 설정되지 않았습니다';
+
+  @override
+  String syncPrimaryOffline(String detail) {
+    return '기본 백엔드 오프라인: $detail';
+  }
+
+  @override
+  String syncPrimaryPushFailed(String detail) {
+    return '기본 백엔드 푸시 실패: $detail';
+  }
+
+  @override
+  String get syncPushConflictManual => '푸시 충돌 및 자동 병합 실패 — 수동으로 동기화하세요';
+
+  @override
+  String get syncPushedPrimary => '기본 백엔드에 푸시했습니다';
+
+  @override
+  String get syncRemoteEmptySkipped => '원격이 비어 있어 덮어쓰기를 건너뛰었습니다(로컬 삭제 방지)';
+
+  @override
+  String syncOverwroteLocalFrom(String backend) {
+    return '$backend에서 로컬을 덮어썼습니다';
+  }
+
+  @override
+  String syncPrimaryOverwriteFailed(String detail) {
+    return '기본 백엔드 덮어쓰기 실패: $detail';
+  }
+
+  @override
+  String get syncOverwriteRemoteStillChanging =>
+      '덮어쓰기 실패: 원격이 계속 변경됨, 다시 시도하세요';
+
+  @override
+  String get syncOverwroteRemoteWithLocal => '로컬로 원격을 덮어썼습니다';
+
+  @override
+  String syncGenericError(String detail) {
+    return '오류: $detail';
+  }
+
+  @override
+  String get syncMirrorsLabel => '미러';
+
+  @override
+  String get syncMirrorOk => '성공';
+
+  @override
+  String get syncMirrorConflict => '충돌';
+
+  @override
+  String get syncMirrorFailed => '실패';
+
+  @override
   String repoNotFoundOrNoAccess(String repo) {
     return '저장소를 찾을 수 없거나 토큰에 접근 권한이 없습니다: $repo';
   }

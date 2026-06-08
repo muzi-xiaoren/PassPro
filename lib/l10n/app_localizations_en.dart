@@ -282,6 +282,74 @@ class AppLocalizationsEn extends AppLocalizations {
       'Stored in the OS Keychain; never written to any file';
 
   @override
+  String syncAllBackendsPullFailed(String detail) {
+    return 'All backends failed to pull: $detail';
+  }
+
+  @override
+  String syncPulledFrom(String backend) {
+    return 'Pulled from $backend';
+  }
+
+  @override
+  String get syncNoPrimary => 'No usable Primary backend configured';
+
+  @override
+  String syncPrimaryOffline(String detail) {
+    return 'Primary offline: $detail';
+  }
+
+  @override
+  String syncPrimaryPushFailed(String detail) {
+    return 'Primary push failed: $detail';
+  }
+
+  @override
+  String get syncPushConflictManual =>
+      'Push conflict; auto-merge failed — please sync manually';
+
+  @override
+  String get syncPushedPrimary => 'Pushed to Primary';
+
+  @override
+  String get syncRemoteEmptySkipped =>
+      'Remote is empty; skipped overwrite (to avoid wiping local)';
+
+  @override
+  String syncOverwroteLocalFrom(String backend) {
+    return 'Overwrote local from $backend';
+  }
+
+  @override
+  String syncPrimaryOverwriteFailed(String detail) {
+    return 'Primary overwrite failed: $detail';
+  }
+
+  @override
+  String get syncOverwriteRemoteStillChanging =>
+      'Overwrite failed: remote keeps changing, please retry';
+
+  @override
+  String get syncOverwroteRemoteWithLocal => 'Overwrote remote with local';
+
+  @override
+  String syncGenericError(String detail) {
+    return 'Error: $detail';
+  }
+
+  @override
+  String get syncMirrorsLabel => 'Mirrors';
+
+  @override
+  String get syncMirrorOk => 'ok';
+
+  @override
+  String get syncMirrorConflict => 'conflict';
+
+  @override
+  String get syncMirrorFailed => 'failed';
+
+  @override
   String repoNotFoundOrNoAccess(String repo) {
     return 'Repository not found, or the token has no access: $repo';
   }

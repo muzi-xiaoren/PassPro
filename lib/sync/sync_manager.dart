@@ -18,28 +18,63 @@ import 'webdav_backend.dart';
 /// 同步状态供 UI 展示。
 enum SyncState { idle, working, ok, offline, error }
 
+/// 语义化状态文案类型。sync 层没有 BuildContext，拿不到 l10n，
+/// 所以这里只产出"类型 + 参数"，由 UI 层按当前语言渲染（修复中英文混杂）。
+enum SyncMsg {
+  allBackendsPullFailed, // arg = 错误详情
+  pulledFrom, // arg = 后端名
+  noPrimary,
+  primaryOffline, // arg = 错误
+  primaryPushFailed, // arg = 错误
+  pushConflictManual,
+  pushedToPrimary, // + mirrors
+  remoteEmptySkipped,
+  overwroteLocalFrom, // arg = 后端名
+  primaryOverwriteFailed, // arg = 错误
+  overwriteRemoteStillChanging,
+  overwroteRemoteWithLocal, // + mirrors
+  genericError, // arg = 错误
+}
+
+/// 单个副仓库(mirror)的推送结果，用于在状态里逐个展示成功/冲突/失败。
+enum MirrorOutcome { ok, conflict, failed }
+
+class MirrorResult {
+  final String backend; // 后端名：github / gitee / webdav
+  final MirrorOutcome outcome;
+  const MirrorResult(this.backend, this.outcome);
+}
+
 class SyncStatus {
   final SyncState state;
-  final String? message;
+  final SyncMsg? msg;
+  final String? arg;
+  final List<MirrorResult> mirrors;
   final DateTime? lastSyncAt;
   final String? lastRemoteVersion;
 
   const SyncStatus({
     this.state = SyncState.idle,
-    this.message,
+    this.msg,
+    this.arg,
+    this.mirrors = const [],
     this.lastSyncAt,
     this.lastRemoteVersion,
   });
 
   SyncStatus copyWith({
     SyncState? state,
-    String? message,
+    SyncMsg? msg,
+    String? arg,
+    List<MirrorResult>? mirrors,
     DateTime? lastSyncAt,
     String? lastRemoteVersion,
   }) {
     return SyncStatus(
       state: state ?? this.state,
-      message: message ?? this.message,
+      msg: msg ?? this.msg,
+      arg: arg ?? this.arg,
+      mirrors: mirrors ?? this.mirrors,
       lastSyncAt: lastSyncAt ?? this.lastSyncAt,
       lastRemoteVersion: lastRemoteVersion ?? this.lastRemoteVersion,
     );
@@ -135,7 +170,8 @@ class SyncManager extends ChangeNotifier {
     } catch (e) {
       _setStatus(_status.copyWith(
         state: SyncState.error,
-        message: e.toString(),
+        msg: SyncMsg.genericError,
+        arg: e.toString(),
       ));
     }
   }
@@ -165,7 +201,8 @@ class SyncManager extends ChangeNotifier {
     if (snap == null || used == null) {
       _setStatus(_status.copyWith(
         state: SyncState.error,
-        message: '所有后端都拉取失败: $lastError',
+        msg: SyncMsg.allBackendsPullFailed,
+        arg: '$lastError',
       ));
       return false;
     }
@@ -195,7 +232,8 @@ class SyncManager extends ChangeNotifier {
       state: SyncState.ok,
       lastSyncAt: DateTime.now(),
       lastRemoteVersion: snap.version,
-      message: '已从 ${used.kind.name} 拉取',
+      msg: SyncMsg.pulledFrom,
+      arg: used.kind.name,
     ));
     return !_logsEqual(merged, localLog);
   }
@@ -210,7 +248,7 @@ class SyncManager extends ChangeNotifier {
     if (primary == null) {
       _setStatus(_status.copyWith(
         state: SyncState.error,
-        message: '未配置可用的 Primary 后端',
+        msg: SyncMsg.noPrimary,
       ));
       return false;
     }
@@ -233,13 +271,15 @@ class SyncManager extends ChangeNotifier {
     } on SocketException catch (e) {
       _setStatus(_status.copyWith(
         state: SyncState.offline,
-        message: 'primary 离线: $e',
+        msg: SyncMsg.primaryOffline,
+        arg: '$e',
       ));
       return false;
     } catch (e) {
       _setStatus(_status.copyWith(
         state: SyncState.error,
-        message: 'primary 推送失败: $e',
+        msg: SyncMsg.primaryPushFailed,
+        arg: '$e',
       ));
       return false;
     }
@@ -252,13 +292,31 @@ class SyncManager extends ChangeNotifier {
       }
       _setStatus(_status.copyWith(
         state: SyncState.error,
-        message: '推送冲突且自动合并失败，请手动同步',
+        msg: SyncMsg.pushConflictManual,
       ));
       return false;
     }
 
-    // primary 成功后再尽力推 mirror
-    final mirrorWarnings = <String>[];
+    // primary 成功后再尽力推 mirror，逐个记录结果（成功/冲突/失败）。
+    final mirrors = await _pushMirrors(localBytes, commitMessage);
+
+    _knownRemoteVersion = await primary.headVersion();
+    _setStatus(_status.copyWith(
+      state: SyncState.ok,
+      lastSyncAt: DateTime.now(),
+      lastRemoteVersion: _knownRemoteVersion,
+      msg: SyncMsg.pushedToPrimary,
+      mirrors: mirrors,
+    ));
+    return true;
+  }
+
+  /// 把本地内容尽力推送到每个 mirror，逐个返回结果（不抛异常）。
+  Future<List<MirrorResult>> _pushMirrors(
+    Uint8List localBytes,
+    String commitMessage,
+  ) async {
+    final results = <MirrorResult>[];
     for (final m in await _mirrors()) {
       try {
         String? mv;
@@ -270,24 +328,17 @@ class SyncManager extends ChangeNotifier {
           baseVersion: mv,
           commitMessage: commitMessage,
         );
-        if (mo == PushOutcome.conflict) {
-          mirrorWarnings.add('${m.kind.name} 冲突');
-        }
-      } catch (e) {
-        mirrorWarnings.add('${m.kind.name} 失败: $e');
+        results.add(MirrorResult(
+          m.kind.name,
+          mo == PushOutcome.conflict
+              ? MirrorOutcome.conflict
+              : MirrorOutcome.ok,
+        ));
+      } catch (_) {
+        results.add(MirrorResult(m.kind.name, MirrorOutcome.failed));
       }
     }
-
-    _knownRemoteVersion = await primary.headVersion();
-    _setStatus(_status.copyWith(
-      state: SyncState.ok,
-      lastSyncAt: DateTime.now(),
-      lastRemoteVersion: _knownRemoteVersion,
-      message: mirrorWarnings.isEmpty
-          ? '已推送到 primary'
-          : '已推送到 primary；mirror: ${mirrorWarnings.join(', ')}',
-    ));
-    return true;
+    return results;
   }
 
   /// 用云端覆盖本地：拉取远端快照并**完全替换**本地日志（不合并）。
@@ -316,7 +367,8 @@ class SyncManager extends ChangeNotifier {
     if (snap == null || used == null) {
       _setStatus(_status.copyWith(
         state: SyncState.error,
-        message: '所有后端都拉取失败: $lastError',
+        msg: SyncMsg.allBackendsPullFailed,
+        arg: '$lastError',
       ));
       return false;
     }
@@ -324,7 +376,7 @@ class SyncManager extends ChangeNotifier {
     if (!snap.exists || snap.content.isEmpty) {
       _setStatus(_status.copyWith(
         state: SyncState.error,
-        message: '远端为空，已跳过覆盖（避免误清空本地）',
+        msg: SyncMsg.remoteEmptySkipped,
       ));
       return false;
     }
@@ -339,7 +391,8 @@ class SyncManager extends ChangeNotifier {
       state: SyncState.ok,
       lastSyncAt: DateTime.now(),
       lastRemoteVersion: snap.version,
-      message: '已用 ${used.kind.name} 覆盖本地',
+      msg: SyncMsg.overwroteLocalFrom,
+      arg: used.kind.name,
     ));
     return true;
   }
@@ -356,7 +409,7 @@ class SyncManager extends ChangeNotifier {
     if (primary == null) {
       _setStatus(_status.copyWith(
         state: SyncState.error,
-        message: '未配置可用的 Primary 后端',
+        msg: SyncMsg.noPrimary,
       ));
       return false;
     }
@@ -387,13 +440,15 @@ class SyncManager extends ChangeNotifier {
     } on SocketException catch (e) {
       _setStatus(_status.copyWith(
         state: SyncState.offline,
-        message: 'primary 离线: $e',
+        msg: SyncMsg.primaryOffline,
+        arg: '$e',
       ));
       return false;
     } catch (e) {
       _setStatus(_status.copyWith(
         state: SyncState.error,
-        message: 'primary 覆盖失败: $e',
+        msg: SyncMsg.primaryOverwriteFailed,
+        arg: '$e',
       ));
       return false;
     }
@@ -401,40 +456,21 @@ class SyncManager extends ChangeNotifier {
     if (outcome == PushOutcome.conflict) {
       _setStatus(_status.copyWith(
         state: SyncState.error,
-        message: '覆盖失败：远端持续变化，请重试',
+        msg: SyncMsg.overwriteRemoteStillChanging,
       ));
       return false;
     }
 
     // primary 成功后再尽力覆盖 mirror（同样以各自当前版本为基线）
-    final mirrorWarnings = <String>[];
-    for (final m in await _mirrors()) {
-      try {
-        String? mv;
-        try {
-          mv = await m.headVersion();
-        } catch (_) {}
-        final mo = await m.push(
-          content: localBytes,
-          baseVersion: mv,
-          commitMessage: commitMessage,
-        );
-        if (mo == PushOutcome.conflict) {
-          mirrorWarnings.add('${m.kind.name} 冲突');
-        }
-      } catch (e) {
-        mirrorWarnings.add('${m.kind.name} 失败: $e');
-      }
-    }
+    final mirrors = await _pushMirrors(localBytes, commitMessage);
 
     _knownRemoteVersion = await primary.headVersion();
     _setStatus(_status.copyWith(
       state: SyncState.ok,
       lastSyncAt: DateTime.now(),
       lastRemoteVersion: _knownRemoteVersion,
-      message: mirrorWarnings.isEmpty
-          ? '已用本地覆盖云端'
-          : '已覆盖 primary；mirror: ${mirrorWarnings.join(', ')}',
+      msg: SyncMsg.overwroteRemoteWithLocal,
+      mirrors: mirrors,
     ));
     return true;
   }

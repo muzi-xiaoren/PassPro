@@ -285,6 +285,74 @@ class AppLocalizationsFr extends AppLocalizations {
       'Stocké dans le trousseau du système ; jamais écrit dans un fichier';
 
   @override
+  String syncAllBackendsPullFailed(String detail) {
+    return 'Échec de la récupération sur tous les backends : $detail';
+  }
+
+  @override
+  String syncPulledFrom(String backend) {
+    return 'Récupéré depuis $backend';
+  }
+
+  @override
+  String get syncNoPrimary => 'Aucun backend principal utilisable configuré';
+
+  @override
+  String syncPrimaryOffline(String detail) {
+    return 'Principal hors ligne : $detail';
+  }
+
+  @override
+  String syncPrimaryPushFailed(String detail) {
+    return 'Échec de l\'envoi vers le principal : $detail';
+  }
+
+  @override
+  String get syncPushConflictManual =>
+      'Conflit d\'envoi ; la fusion automatique a échoué — synchronisez manuellement';
+
+  @override
+  String get syncPushedPrimary => 'Envoyé vers le principal';
+
+  @override
+  String get syncRemoteEmptySkipped =>
+      'Le distant est vide ; écrasement ignoré (pour ne pas effacer le local)';
+
+  @override
+  String syncOverwroteLocalFrom(String backend) {
+    return 'Local écrasé depuis $backend';
+  }
+
+  @override
+  String syncPrimaryOverwriteFailed(String detail) {
+    return 'Échec de l\'écrasement du principal : $detail';
+  }
+
+  @override
+  String get syncOverwriteRemoteStillChanging =>
+      'Échec de l\'écrasement : le distant change sans cesse, réessayez';
+
+  @override
+  String get syncOverwroteRemoteWithLocal => 'Distant écrasé avec le local';
+
+  @override
+  String syncGenericError(String detail) {
+    return 'Erreur : $detail';
+  }
+
+  @override
+  String get syncMirrorsLabel => 'Miroirs';
+
+  @override
+  String get syncMirrorOk => 'ok';
+
+  @override
+  String get syncMirrorConflict => 'conflit';
+
+  @override
+  String get syncMirrorFailed => 'échec';
+
+  @override
   String repoNotFoundOrNoAccess(String repo) {
     return 'Dépôt introuvable ou le jeton n\'a pas accès : $repo';
   }

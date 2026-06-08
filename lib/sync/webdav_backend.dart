@@ -131,6 +131,12 @@ class WebDavBackend implements SyncBackend {
             }, body: content)
             .timeout(_timeout);
       } else {
+        // 坚果云的 ETag/If-Match 并不总是稳定：内容其实没变时也可能回 412。
+        // 拉一次远端内容比对——完全相同就当作“已是最新”（无需推送），否则才是真冲突。
+        final current = await pull();
+        if (current.exists && _bytesEqual(current.content, content)) {
+          return PushOutcome.ok;
+        }
         return PushOutcome.conflict;
       }
     }
@@ -138,6 +144,14 @@ class WebDavBackend implements SyncBackend {
       throw SyncException(resp.body, statusCode: resp.statusCode);
     }
     return PushOutcome.ok;
+  }
+
+  static bool _bytesEqual(Uint8List a, Uint8List b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   Future<void> _ensureDirectories() async {

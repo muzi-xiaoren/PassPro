@@ -283,6 +283,75 @@ class AppLocalizationsRu extends AppLocalizations {
       'Хранится в связке ключей ОС; никогда не записывается в файлы';
 
   @override
+  String syncAllBackendsPullFailed(String detail) {
+    return 'Не удалось получить данные ни с одного бэкенда: $detail';
+  }
+
+  @override
+  String syncPulledFrom(String backend) {
+    return 'Получено из $backend';
+  }
+
+  @override
+  String get syncNoPrimary => 'Не настроен доступный основной бэкенд';
+
+  @override
+  String syncPrimaryOffline(String detail) {
+    return 'Основной офлайн: $detail';
+  }
+
+  @override
+  String syncPrimaryPushFailed(String detail) {
+    return 'Не удалось отправить в основной: $detail';
+  }
+
+  @override
+  String get syncPushConflictManual =>
+      'Конфликт отправки; автослияние не удалось — синхронизируйте вручную';
+
+  @override
+  String get syncPushedPrimary => 'Отправлено в основной';
+
+  @override
+  String get syncRemoteEmptySkipped =>
+      'Удалённый пуст; перезапись пропущена (чтобы не стереть локальные данные)';
+
+  @override
+  String syncOverwroteLocalFrom(String backend) {
+    return 'Локальные данные перезаписаны из $backend';
+  }
+
+  @override
+  String syncPrimaryOverwriteFailed(String detail) {
+    return 'Не удалось перезаписать основной: $detail';
+  }
+
+  @override
+  String get syncOverwriteRemoteStillChanging =>
+      'Перезапись не удалась: удалённый постоянно меняется, повторите';
+
+  @override
+  String get syncOverwroteRemoteWithLocal =>
+      'Удалённый перезаписан локальными данными';
+
+  @override
+  String syncGenericError(String detail) {
+    return 'Ошибка: $detail';
+  }
+
+  @override
+  String get syncMirrorsLabel => 'Зеркала';
+
+  @override
+  String get syncMirrorOk => 'ок';
+
+  @override
+  String get syncMirrorConflict => 'конфликт';
+
+  @override
+  String get syncMirrorFailed => 'сбой';
+
+  @override
   String repoNotFoundOrNoAccess(String repo) {
     return 'Репозиторий не найден или у токена нет доступа: $repo';
   }

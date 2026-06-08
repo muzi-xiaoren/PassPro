@@ -78,6 +78,40 @@ class _HomePageState extends State<HomePage>
 
 enum _SyncAction { pull, push, overwriteLocal, overwriteRemote }
 
+/// 把 sync 层的语义化状态（[SyncStatus.msg] + arg + mirrors）渲染成本地化文案。
+/// 主仓库 + 每个副仓库(mirror)的结果都会展示（修复"只提示主仓库"与"中英文混杂"）。
+String? _syncStatusText(AppLocalizations l10n, SyncStatus s) {
+  final msg = s.msg;
+  if (msg == null) return null;
+  final arg = s.arg ?? '';
+  final base = switch (msg) {
+    SyncMsg.allBackendsPullFailed => l10n.syncAllBackendsPullFailed(arg),
+    SyncMsg.pulledFrom => l10n.syncPulledFrom(arg),
+    SyncMsg.noPrimary => l10n.syncNoPrimary,
+    SyncMsg.primaryOffline => l10n.syncPrimaryOffline(arg),
+    SyncMsg.primaryPushFailed => l10n.syncPrimaryPushFailed(arg),
+    SyncMsg.pushConflictManual => l10n.syncPushConflictManual,
+    SyncMsg.pushedToPrimary => l10n.syncPushedPrimary,
+    SyncMsg.remoteEmptySkipped => l10n.syncRemoteEmptySkipped,
+    SyncMsg.overwroteLocalFrom => l10n.syncOverwroteLocalFrom(arg),
+    SyncMsg.primaryOverwriteFailed => l10n.syncPrimaryOverwriteFailed(arg),
+    SyncMsg.overwriteRemoteStillChanging =>
+      l10n.syncOverwriteRemoteStillChanging,
+    SyncMsg.overwroteRemoteWithLocal => l10n.syncOverwroteRemoteWithLocal,
+    SyncMsg.genericError => l10n.syncGenericError(arg),
+  };
+  if (s.mirrors.isEmpty) return base;
+  final summary = s.mirrors.map((m) {
+    final word = switch (m.outcome) {
+      MirrorOutcome.ok => l10n.syncMirrorOk,
+      MirrorOutcome.conflict => l10n.syncMirrorConflict,
+      MirrorOutcome.failed => l10n.syncMirrorFailed,
+    };
+    return '${m.backend} ($word)';
+  }).join(', ');
+  return '$base · ${l10n.syncMirrorsLabel}: $summary';
+}
+
 class _SyncStatusBadge extends StatelessWidget {
   const _SyncStatusBadge();
 
@@ -99,7 +133,7 @@ class _SyncStatusBadge extends StatelessWidget {
     };
 
     return PopupMenuButton<_SyncAction>(
-      tooltip: s.message ?? label,
+      tooltip: _syncStatusText(l10n, s) ?? label,
       icon: Icon(icon, color: color),
       onSelected: (a) => _onAction(context, a),
       itemBuilder: (_) => [
@@ -203,14 +237,15 @@ class _SyncStatusBadge extends StatelessWidget {
     final st = sync.status;
     final failed =
         st.state == SyncState.error || st.state == SyncState.offline;
-    final okMsg = switch (action) {
-      _SyncAction.pull => st.message ?? l10n.syncOk,
-      _SyncAction.push => st.message ?? l10n.syncOk,
-      _SyncAction.overwriteLocal => l10n.overwroteLocal,
-      _SyncAction.overwriteRemote => l10n.overwroteRemote,
-    };
+    final statusText = _syncStatusText(l10n, st);
+    final okMsg = statusText ??
+        switch (action) {
+          _SyncAction.overwriteLocal => l10n.overwroteLocal,
+          _SyncAction.overwriteRemote => l10n.overwroteRemote,
+          _ => l10n.syncOk,
+        };
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(failed ? (st.message ?? l10n.syncError) : okMsg)),
+      SnackBar(content: Text(failed ? (statusText ?? l10n.syncError) : okMsg)),
     );
   }
 }

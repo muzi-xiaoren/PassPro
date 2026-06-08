@@ -618,6 +618,108 @@ abstract class AppLocalizations {
   /// **'Stored in the OS Keychain; never written to any file'**
   String get patHelper;
 
+  /// No description provided for @syncAllBackendsPullFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'All backends failed to pull: {detail}'**
+  String syncAllBackendsPullFailed(String detail);
+
+  /// No description provided for @syncPulledFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Pulled from {backend}'**
+  String syncPulledFrom(String backend);
+
+  /// No description provided for @syncNoPrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'No usable Primary backend configured'**
+  String get syncNoPrimary;
+
+  /// No description provided for @syncPrimaryOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary offline: {detail}'**
+  String syncPrimaryOffline(String detail);
+
+  /// No description provided for @syncPrimaryPushFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary push failed: {detail}'**
+  String syncPrimaryPushFailed(String detail);
+
+  /// No description provided for @syncPushConflictManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Push conflict; auto-merge failed — please sync manually'**
+  String get syncPushConflictManual;
+
+  /// No description provided for @syncPushedPrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'Pushed to Primary'**
+  String get syncPushedPrimary;
+
+  /// No description provided for @syncRemoteEmptySkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote is empty; skipped overwrite (to avoid wiping local)'**
+  String get syncRemoteEmptySkipped;
+
+  /// No description provided for @syncOverwroteLocalFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrote local from {backend}'**
+  String syncOverwroteLocalFrom(String backend);
+
+  /// No description provided for @syncPrimaryOverwriteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary overwrite failed: {detail}'**
+  String syncPrimaryOverwriteFailed(String detail);
+
+  /// No description provided for @syncOverwriteRemoteStillChanging.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrite failed: remote keeps changing, please retry'**
+  String get syncOverwriteRemoteStillChanging;
+
+  /// No description provided for @syncOverwroteRemoteWithLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrote remote with local'**
+  String get syncOverwroteRemoteWithLocal;
+
+  /// No description provided for @syncGenericError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {detail}'**
+  String syncGenericError(String detail);
+
+  /// No description provided for @syncMirrorsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Mirrors'**
+  String get syncMirrorsLabel;
+
+  /// No description provided for @syncMirrorOk.
+  ///
+  /// In en, this message translates to:
+  /// **'ok'**
+  String get syncMirrorOk;
+
+  /// No description provided for @syncMirrorConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'conflict'**
+  String get syncMirrorConflict;
+
+  /// No description provided for @syncMirrorFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'failed'**
+  String get syncMirrorFailed;
+
   /// No description provided for @repoNotFoundOrNoAccess.
   ///
   /// In en, this message translates to:

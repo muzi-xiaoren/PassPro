@@ -273,6 +273,71 @@ class AppLocalizationsZh extends AppLocalizations {
   String get patHelper => '存进 OS Keychain，不会写入任何文件';
 
   @override
+  String syncAllBackendsPullFailed(String detail) {
+    return '所有后端都拉取失败：$detail';
+  }
+
+  @override
+  String syncPulledFrom(String backend) {
+    return '已从 $backend 拉取';
+  }
+
+  @override
+  String get syncNoPrimary => '未配置可用的主仓库(Primary)';
+
+  @override
+  String syncPrimaryOffline(String detail) {
+    return '主仓库离线：$detail';
+  }
+
+  @override
+  String syncPrimaryPushFailed(String detail) {
+    return '主仓库推送失败：$detail';
+  }
+
+  @override
+  String get syncPushConflictManual => '推送冲突且自动合并失败，请手动同步';
+
+  @override
+  String get syncPushedPrimary => '已推送到主仓库';
+
+  @override
+  String get syncRemoteEmptySkipped => '远端为空，已跳过覆盖（避免误清空本地）';
+
+  @override
+  String syncOverwroteLocalFrom(String backend) {
+    return '已用 $backend 覆盖本地';
+  }
+
+  @override
+  String syncPrimaryOverwriteFailed(String detail) {
+    return '主仓库覆盖失败：$detail';
+  }
+
+  @override
+  String get syncOverwriteRemoteStillChanging => '覆盖失败：远端持续变化，请重试';
+
+  @override
+  String get syncOverwroteRemoteWithLocal => '已用本地覆盖云端';
+
+  @override
+  String syncGenericError(String detail) {
+    return '出错：$detail';
+  }
+
+  @override
+  String get syncMirrorsLabel => '副仓库';
+
+  @override
+  String get syncMirrorOk => '成功';
+
+  @override
+  String get syncMirrorConflict => '冲突';
+
+  @override
+  String get syncMirrorFailed => '失败';
+
+  @override
   String repoNotFoundOrNoAccess(String repo) {
     return '仓库不存在或令牌无权访问：$repo';
   }
