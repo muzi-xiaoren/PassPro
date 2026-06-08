@@ -285,6 +285,34 @@ class AppLocalizationsFr extends AppLocalizations {
       'Stocké dans le trousseau du système ; jamais écrit dans un fichier';
 
   @override
+  String get owner => 'Propriétaire';
+
+  @override
+  String get personalAccessToken => 'Jeton d\'accès personnel';
+
+  @override
+  String get webdavAccount => 'Compte';
+
+  @override
+  String get webdavServer => 'Adresse du serveur';
+
+  @override
+  String get webdavRemotePath => 'Chemin du fichier distant';
+
+  @override
+  String get webdavAppPassword => 'Mot de passe d\'application';
+
+  @override
+  String get webdavAppPasswordHelper =>
+      'Nutstore : saisissez le mot de passe d\'application généré dans la gestion des applications tierces';
+
+  @override
+  String get rolePrimary => 'Principal';
+
+  @override
+  String get roleMirror => 'Miroir';
+
+  @override
   String get testOkNoFile =>
       'Connexion réussie (le fichier distant n\'existe pas encore ; le premier envoi le créera)';
 

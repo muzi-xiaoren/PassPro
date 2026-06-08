@@ -618,6 +618,60 @@ abstract class AppLocalizations {
   /// **'Stored in the OS Keychain; never written to any file'**
   String get patHelper;
 
+  /// No description provided for @owner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get owner;
+
+  /// No description provided for @personalAccessToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal Access Token'**
+  String get personalAccessToken;
+
+  /// No description provided for @webdavAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get webdavAccount;
+
+  /// No description provided for @webdavServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server address'**
+  String get webdavServer;
+
+  /// No description provided for @webdavRemotePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote file path'**
+  String get webdavRemotePath;
+
+  /// No description provided for @webdavAppPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'App password'**
+  String get webdavAppPassword;
+
+  /// No description provided for @webdavAppPasswordHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Nutstore: enter the app password from Third-Party App Management'**
+  String get webdavAppPasswordHelper;
+
+  /// No description provided for @rolePrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary'**
+  String get rolePrimary;
+
+  /// No description provided for @roleMirror.
+  ///
+  /// In en, this message translates to:
+  /// **'Mirror'**
+  String get roleMirror;
+
   /// No description provided for @testOkNoFile.
   ///
   /// In en, this message translates to:

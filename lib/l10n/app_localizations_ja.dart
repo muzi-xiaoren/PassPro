@@ -275,6 +275,34 @@ class AppLocalizationsJa extends AppLocalizations {
   String get patHelper => 'OSキーチェーンに保存され、ファイルには書き込まれません';
 
   @override
+  String get owner => 'オーナー';
+
+  @override
+  String get personalAccessToken => '個人アクセストークン';
+
+  @override
+  String get webdavAccount => 'アカウント';
+
+  @override
+  String get webdavServer => 'サーバーアドレス';
+
+  @override
+  String get webdavRemotePath => 'リモートファイルパス';
+
+  @override
+  String get webdavAppPassword => 'アプリパスワード';
+
+  @override
+  String get webdavAppPasswordHelper =>
+      'Nutstore：サードパーティアプリ管理で生成したアプリパスワードを入力してください';
+
+  @override
+  String get rolePrimary => 'プライマリ';
+
+  @override
+  String get roleMirror => 'ミラー';
+
+  @override
   String get testOkNoFile => '接続成功（リモートファイルはまだ存在しません。初回プッシュ時に作成されます）';
 
   @override

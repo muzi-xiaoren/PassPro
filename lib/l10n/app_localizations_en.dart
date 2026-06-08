@@ -282,6 +282,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'Stored in the OS Keychain; never written to any file';
 
   @override
+  String get owner => 'Owner';
+
+  @override
+  String get personalAccessToken => 'Personal Access Token';
+
+  @override
+  String get webdavAccount => 'Account';
+
+  @override
+  String get webdavServer => 'Server address';
+
+  @override
+  String get webdavRemotePath => 'Remote file path';
+
+  @override
+  String get webdavAppPassword => 'App password';
+
+  @override
+  String get webdavAppPasswordHelper =>
+      'Nutstore: enter the app password from Third-Party App Management';
+
+  @override
+  String get rolePrimary => 'Primary';
+
+  @override
+  String get roleMirror => 'Mirror';
+
+  @override
   String get testOkNoFile =>
       'Connected (the remote file does not exist yet; the first push will create it)';
 

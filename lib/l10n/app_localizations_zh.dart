@@ -273,6 +273,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get patHelper => '存进 OS Keychain，不会写入任何文件';
 
   @override
+  String get owner => '拥有者';
+
+  @override
+  String get personalAccessToken => '个人访问令牌';
+
+  @override
+  String get webdavAccount => '账户信息';
+
+  @override
+  String get webdavServer => '服务器地址';
+
+  @override
+  String get webdavRemotePath => '远程文件路径';
+
+  @override
+  String get webdavAppPassword => '应用密码';
+
+  @override
+  String get webdavAppPasswordHelper => '坚果云请填写“第三方应用管理”生成的应用密码';
+
+  @override
+  String get rolePrimary => '主仓库';
+
+  @override
+  String get roleMirror => '副仓库';
+
+  @override
   String get testOkNoFile => '连接成功（远端文件还不存在，首次推送会创建）';
 
   @override

@@ -194,7 +194,7 @@ class _BackendTile extends StatelessWidget {
         title: Text(_name),
         subtitle: Text(
           cfg.enabled
-              ? '${cfg.role == BackendRole.primary ? "Primary" : "Mirror"} · ${kind == BackendKind.webdav ? cfg.repo : "${cfg.owner}/${cfg.repo}"}'
+              ? '${cfg.role == BackendRole.primary ? l10n.rolePrimary : l10n.roleMirror} · ${kind == BackendKind.webdav ? cfg.repo : "${cfg.owner}/${cfg.repo}"}'
               : l10n.backendDisabled,
         ),
         children: [
@@ -363,14 +363,14 @@ class _BackendFormState extends State<_BackendForm> {
             Text(l10n.roleLabel),
             const SizedBox(width: 12),
             SegmentedButton<BackendRole>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: BackendRole.primary,
-                  label: Text('Primary'),
+                  label: Text(l10n.rolePrimary),
                 ),
                 ButtonSegment(
                   value: BackendRole.mirror,
-                  label: Text('Mirror'),
+                  label: Text(l10n.roleMirror),
                 ),
               ],
               selected: {_role},
@@ -382,7 +382,7 @@ class _BackendFormState extends State<_BackendForm> {
         TextField(
           controller: _owner,
           decoration: InputDecoration(
-            labelText: _isWebDav ? '用户名' : 'Owner',
+            labelText: _isWebDav ? l10n.webdavAccount : l10n.owner,
             border: const OutlineInputBorder(),
             isDense: true,
           ),
@@ -391,7 +391,7 @@ class _BackendFormState extends State<_BackendForm> {
         TextField(
           controller: _repo,
           decoration: InputDecoration(
-            labelText: _isWebDav ? '服务器地址' : l10n.repoName,
+            labelText: _isWebDav ? l10n.webdavServer : l10n.repoName,
             hintText: _isWebDav ? 'https://dav.jianguoyun.com/dav/' : null,
             border: const OutlineInputBorder(),
             isDense: true,
@@ -412,7 +412,7 @@ class _BackendFormState extends State<_BackendForm> {
         TextField(
           controller: _filePath,
           decoration: InputDecoration(
-            labelText: _isWebDav ? '远程文件路径' : l10n.filePath,
+            labelText: _isWebDav ? l10n.webdavRemotePath : l10n.filePath,
             hintText: _isWebDav ? '/PassPro/passwords.log' : null,
             border: const OutlineInputBorder(),
             isDense: true,
@@ -428,8 +428,8 @@ class _BackendFormState extends State<_BackendForm> {
             _patChanged = true;
           },
           decoration: InputDecoration(
-            labelText: _isWebDav ? '应用密码' : 'Personal Access Token',
-            helperText: _isWebDav ? '坚果云请填写“第三方应用管理”生成的应用密码' : l10n.patHelper,
+            labelText: _isWebDav ? l10n.webdavAppPassword : l10n.personalAccessToken,
+            helperText: _isWebDav ? l10n.webdavAppPasswordHelper : l10n.patHelper,
             border: const OutlineInputBorder(),
             isDense: true,
           ),

@@ -275,6 +275,33 @@ class AppLocalizationsKo extends AppLocalizations {
   String get patHelper => 'OS 키체인에 저장되며 어떤 파일에도 기록되지 않습니다';
 
   @override
+  String get owner => '소유자';
+
+  @override
+  String get personalAccessToken => '개인 액세스 토큰';
+
+  @override
+  String get webdavAccount => '계정';
+
+  @override
+  String get webdavServer => '서버 주소';
+
+  @override
+  String get webdavRemotePath => '원격 파일 경로';
+
+  @override
+  String get webdavAppPassword => '앱 비밀번호';
+
+  @override
+  String get webdavAppPasswordHelper => 'Nutstore: 타사 앱 관리에서 생성한 앱 비밀번호를 입력하세요';
+
+  @override
+  String get rolePrimary => '기본';
+
+  @override
+  String get roleMirror => '미러';
+
+  @override
   String get testOkNoFile => '연결 성공(원격 파일이 아직 없습니다. 첫 푸시 시 생성됩니다)';
 
   @override

@@ -283,6 +283,34 @@ class AppLocalizationsRu extends AppLocalizations {
       'Хранится в связке ключей ОС; никогда не записывается в файлы';
 
   @override
+  String get owner => 'Владелец';
+
+  @override
+  String get personalAccessToken => 'Персональный токен доступа';
+
+  @override
+  String get webdavAccount => 'Учётная запись';
+
+  @override
+  String get webdavServer => 'Адрес сервера';
+
+  @override
+  String get webdavRemotePath => 'Путь к удалённому файлу';
+
+  @override
+  String get webdavAppPassword => 'Пароль приложения';
+
+  @override
+  String get webdavAppPasswordHelper =>
+      'Nutstore: введите пароль приложения из управления сторонними приложениями';
+
+  @override
+  String get rolePrimary => 'Основной';
+
+  @override
+  String get roleMirror => 'Зеркало';
+
+  @override
   String get testOkNoFile =>
       'Подключение успешно (удалённый файл ещё не существует; будет создан при первой отправке)';
 

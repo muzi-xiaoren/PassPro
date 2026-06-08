@@ -284,6 +284,34 @@ class AppLocalizationsDe extends AppLocalizations {
       'Im Schlüsselbund des Betriebssystems gespeichert; wird nie in eine Datei geschrieben';
 
   @override
+  String get owner => 'Eigentümer';
+
+  @override
+  String get personalAccessToken => 'Persönliches Zugriffstoken';
+
+  @override
+  String get webdavAccount => 'Konto';
+
+  @override
+  String get webdavServer => 'Serveradresse';
+
+  @override
+  String get webdavRemotePath => 'Remote-Dateipfad';
+
+  @override
+  String get webdavAppPassword => 'App-Passwort';
+
+  @override
+  String get webdavAppPasswordHelper =>
+      'Nutstore: App-Passwort aus der Drittanbieter-App-Verwaltung eingeben';
+
+  @override
+  String get rolePrimary => 'Primär';
+
+  @override
+  String get roleMirror => 'Spiegel';
+
+  @override
   String get testOkNoFile =>
       'Verbunden (die Remote-Datei existiert noch nicht; der erste Push erstellt sie)';
 
