@@ -95,7 +95,7 @@ jobs:
           if-no-files-found: error
 
   macos:
-    name: macOS (universal)
+    name: macOS
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
@@ -104,16 +104,39 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      # macOS 构建默认即 arm64+x64 通用二进制；Flutter 3.44 起 --target-platform 已移除
+      # Flutter 3.44 起 flutter build macos 只产 universal(arm64+x86_64)，已无 --target-platform。
+      # 这里先 universal 构建，再用 lipo 拆成单架构、用 Release.entitlements 重签（adhoc），分别打包。
       - run: flutter build macos --release
-      - name: Zip .app bundle
+      - name: Split into per-arch .app bundles & zip
         run: |
-          cd build/macos/Build/Products/Release
-          ditto -c -k --sequesterRsrc --keepParent *.app "$GITHUB_WORKSPACE/PassPro-macOS.zip"
+          set -euo pipefail
+          SRC="build/macos/Build/Products/Release/PassPro.app"
+          ENT="macos/Runner/Release.entitlements"
+          for ARCH in arm64 x86_64; do
+            case "$ARCH" in arm64) OUT=arm64 ;; x86_64) OUT=x64 ;; esac
+            WORK="$RUNNER_TEMP/$ARCH"
+            rm -rf "$WORK"; mkdir -p "$WORK"
+            cp -R "$SRC" "$WORK/"
+            APP="$WORK/PassPro.app"
+            # 把每个 universal Mach-O 瘦身成单架构（保留原权限位）
+            find "$APP" -type f | while read -r f; do
+              if file "$f" | grep -q "Mach-O universal"; then
+                mode=$(stat -f "%Lp" "$f")
+                lipo "$f" -thin "$ARCH" -output "$f.thin"
+                mv -f "$f.thin" "$f"
+                chmod "$mode" "$f"
+              fi
+            done
+            # lipo 改动二进制会让签名失效 → adhoc 深度重签（主程序套用 entitlements）
+            codesign --force --deep --sign - --entitlements "$ENT" "$APP"
+            codesign --verify --deep --strict "$APP"
+            ditto -c -k --sequesterRsrc --keepParent "$APP" "$GITHUB_WORKSPACE/PassPro-macOS-$OUT.zip"
+          done
+          ls -lh "$GITHUB_WORKSPACE"/PassPro-macOS-*.zip
       - uses: actions/upload-artifact@v7
         with:
           name: PassPro-macOS
-          path: PassPro-macOS.zip
+          path: PassPro-macOS-*.zip
           if-no-files-found: error
 
   linux:
@@ -180,7 +203,8 @@ jobs:
           cp artifacts/PassPro-Android-APKs/*.apk                     release/
           cp artifacts/PassPro-Windows/PassPro-Windows.zip            release/
           cp artifacts/PassPro-Windows/PassPro-Setup.exe              release/
-          cp artifacts/PassPro-macOS/PassPro-macOS.zip                release/
+          cp artifacts/PassPro-macOS/PassPro-macOS-arm64.zip          release/
+          cp artifacts/PassPro-macOS/PassPro-macOS-x64.zip            release/
           cp artifacts/PassPro-Linux-x64/PassPro-Linux-x64.zip        release/
           cp artifacts/PassPro-iOS-unsigned/PassPro-iOS-unsigned.zip  release/
           ls -lh release
