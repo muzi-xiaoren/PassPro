@@ -95,18 +95,8 @@ jobs:
           if-no-files-found: error
 
   macos:
-    name: macOS (${{ matrix.name }})
+    name: macOS (universal)
     runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: arm64
-            target: darwin-arm64
-            output: PassPro-macOS-arm64.zip
-          - name: x64
-            target: darwin-x64
-            output: PassPro-macOS-x64.zip
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -114,15 +104,16 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build macos --release --target-platform ${{ matrix.target }}
+      # macOS 构建默认即 arm64+x64 通用二进制；Flutter 3.44 起 --target-platform 已移除
+      - run: flutter build macos --release
       - name: Zip .app bundle
         run: |
           cd build/macos/Build/Products/Release
-          ditto -c -k --sequesterRsrc --keepParent *.app "$GITHUB_WORKSPACE/${{ matrix.output }}"
+          ditto -c -k --sequesterRsrc --keepParent *.app "$GITHUB_WORKSPACE/PassPro-macOS.zip"
       - uses: actions/upload-artifact@v4
         with:
-          name: PassPro-macOS-${{ matrix.name }}
-          path: ${{ matrix.output }}
+          name: PassPro-macOS
+          path: PassPro-macOS.zip
           if-no-files-found: error
 
   linux:
@@ -133,7 +124,7 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev zip
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev zip
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -189,8 +180,7 @@ jobs:
           cp artifacts/PassPro-Android-APKs/*.apk                     release/
           cp artifacts/PassPro-Windows/PassPro-Windows.zip            release/
           cp artifacts/PassPro-Windows/PassPro-Setup.exe              release/
-          cp artifacts/PassPro-macOS-arm64/PassPro-macOS-arm64.zip    release/
-          cp artifacts/PassPro-macOS-x64/PassPro-macOS-x64.zip        release/
+          cp artifacts/PassPro-macOS/PassPro-macOS.zip                release/
           cp artifacts/PassPro-Linux-x64/PassPro-Linux-x64.zip        release/
           cp artifacts/PassPro-iOS-unsigned/PassPro-iOS-unsigned.zip  release/
           ls -lh release

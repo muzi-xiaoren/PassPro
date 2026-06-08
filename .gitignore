@@ -14,10 +14,9 @@ build/
 # Mac
 .DS_Store
 
-# 平台目录：android/ios/macos/windows 纳入版本库以便 CI 构建
-#（各平台目录内自带 .gitignore 排除 local.properties/Pods 等机器相关文件）
-# linux/web 不构建，继续忽略
-linux/
+# 平台目录：android/ios/macos/windows/linux 纳入版本库以便 CI 构建
+#（各平台目录内自带 .gitignore 排除 local.properties/Pods/ephemeral 等机器相关文件）
+# web 不构建，继续忽略
 web/
 
 # 本地 secret
