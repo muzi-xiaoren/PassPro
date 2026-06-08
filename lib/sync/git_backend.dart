@@ -91,6 +91,27 @@ class GitBackend implements SyncBackend {
   }
 
   @override
+  Future<String?> testConnection() async {
+    // 先确认仓库本身存在/有权限。否则 contents 接口对"仓库不存在"也只回 404，
+    // 会被 headVersion 误判成"文件还没建"（测试假成功，但 push 时报 Not Found Project）。
+    final repoResp = await _http
+        .get(Uri.parse('$_host/repos/${config.owner}/${config.repo}'),
+            headers: _headers)
+        .timeout(_timeout);
+    if (repoResp.statusCode == 404) {
+      throw SyncException(
+        '仓库不存在或令牌无权访问：${config.owner}/${config.repo}',
+        statusCode: 404,
+      );
+    }
+    if (repoResp.statusCode >= 400) {
+      throw SyncException(repoResp.body, statusCode: repoResp.statusCode);
+    }
+    // 仓库 OK，再取文件版本（文件不存在 = null，属正常）。
+    return headVersion();
+  }
+
+  @override
   Future<PushOutcome> push({
     required Uint8List content,
     required String? baseVersion,

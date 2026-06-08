@@ -322,7 +322,7 @@ class _BackendFormState extends State<_BackendForm> {
       final backend = _isWebDav
           ? WebDavBackend(config: cfg, password: pat)
           : GitBackend(config: cfg, pat: pat);
-      final v = await backend.headVersion();
+      final v = await backend.testConnection();
       setState(() {
         _testFailed = false;
         final shortVersion = v == null || v.length <= 7 ? v : v.substring(0, 7);

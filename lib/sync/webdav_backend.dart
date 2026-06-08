@@ -85,6 +85,11 @@ class WebDavBackend implements SyncBackend {
     return _versionFrom(resp);
   }
 
+  // WebDAV 没有"仓库"概念，鉴权失败(401)在 headVersion 已会抛出，
+  // 404/409 表示文件还没建（正常），所以测试连接直接复用 headVersion。
+  @override
+  Future<String?> testConnection() => headVersion();
+
   @override
   Future<PushOutcome> push({
     required Uint8List content,

@@ -19,6 +19,12 @@ abstract class SyncBackend {
 
   /// 仅检查远端最新 version，用于"智能跳过"。失败抛异常。
   Future<String?> headVersion();
+
+  /// 测试连接：验证服务器可达 + 鉴权通过 + 仓库/路径有效。
+  /// 与 [headVersion] 的区别：它会把"仓库/项目不存在"当作**失败**抛出，
+  /// 而不是像 [headVersion] 那样把 404 一律当成"文件还没建"。
+  /// 成功返回远端当前 version（无文件时为 null）。
+  Future<String?> testConnection();
 }
 
 class RemoteSnapshot {
