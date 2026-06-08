@@ -85,6 +85,8 @@
   "branch": "Branche",
   "filePath": "Chemin du fichier",
   "patHelper": "Stocké dans le trousseau du système ; jamais écrit dans un fichier",
+  "repoNotFoundOrNoAccess": "Dépôt introuvable ou le jeton n'a pas accès : {repo}",
+  "webdavFolderMissing": "Le dossier cible n'existe pas. Créez-le d'abord dans votre compte WebDAV/Nutstore et faites correspondre le chemin du fichier distant (par ex. /PassPro/passwords.log).",
   "owner": "Propriétaire",
   "personalAccessToken": "Jeton d'accès personnel",
   "webdavAccount": "Compte",

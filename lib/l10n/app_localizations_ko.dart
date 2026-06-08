@@ -275,6 +275,15 @@ class AppLocalizationsKo extends AppLocalizations {
   String get patHelper => 'OS 키체인에 저장되며 어떤 파일에도 기록되지 않습니다';
 
   @override
+  String repoNotFoundOrNoAccess(String repo) {
+    return '저장소를 찾을 수 없거나 토큰에 접근 권한이 없습니다: $repo';
+  }
+
+  @override
+  String get webdavFolderMissing =>
+      '대상 폴더가 없습니다. 먼저 WebDAV/Nutstore에서 폴더를 만들고 원격 파일 경로를 일치시키세요(예: /PassPro/passwords.log).';
+
+  @override
   String get owner => '소유자';
 
   @override

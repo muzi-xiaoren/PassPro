@@ -85,6 +85,8 @@
   "branch": "ブランチ",
   "filePath": "ファイルパス",
   "patHelper": "OSキーチェーンに保存され、ファイルには書き込まれません",
+  "repoNotFoundOrNoAccess": "リポジトリが見つからないか、トークンにアクセス権がありません：{repo}",
+  "webdavFolderMissing": "対象フォルダが存在しません。先に WebDAV/Nutstore でフォルダを作成し、リモートファイルパスを一致させてください（例：/PassPro/passwords.log）。",
   "owner": "オーナー",
   "personalAccessToken": "個人アクセストークン",
   "webdavAccount": "アカウント",

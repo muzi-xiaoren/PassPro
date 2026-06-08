@@ -41,10 +41,27 @@ class RemoteSnapshot {
 
 enum PushOutcome { ok, conflict }
 
+/// 语义化错误类型，便于 UI 层映射到本地化文案（后端无 BuildContext，拿不到 l10n）。
+enum SyncErrorKind {
+  /// 普通 HTTP 错误，直接展示 statusCode + 服务器返回的 message。
+  http,
+
+  /// 仓库不存在 / 令牌无权访问（Owner、Repo 填错时）。
+  repoNotFound,
+
+  /// WebDAV 目标文件夹不存在（坚果云需先手动建文件夹）。
+  webdavFolderMissing,
+}
+
 class SyncException implements Exception {
   final String message;
   final int? statusCode;
-  const SyncException(this.message, {this.statusCode});
+  final SyncErrorKind kind;
+  const SyncException(
+    this.message, {
+    this.statusCode,
+    this.kind = SyncErrorKind.http,
+  });
   @override
   String toString() =>
       'SyncException($statusCode): $message';

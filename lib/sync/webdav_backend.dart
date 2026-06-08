@@ -96,8 +96,9 @@ class WebDavBackend implements SyncBackend {
     // 必须先在坚果云里手动建好，否则推送也会失败 —— 所以这里明确提示用户。
     if (resp.statusCode == 409) {
       throw SyncException(
-        '目标文件夹不存在：请先在坚果云里创建该文件夹，并让“远程文件路径”与之对应（例如 /PassPro/passwords.log）。',
+        'target folder does not exist',
         statusCode: 409,
+        kind: SyncErrorKind.webdavFolderMissing,
       );
     }
     if (resp.statusCode >= 400) {

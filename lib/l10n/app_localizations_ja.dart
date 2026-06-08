@@ -275,6 +275,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get patHelper => 'OSキーチェーンに保存され、ファイルには書き込まれません';
 
   @override
+  String repoNotFoundOrNoAccess(String repo) {
+    return 'リポジトリが見つからないか、トークンにアクセス権がありません：$repo';
+  }
+
+  @override
+  String get webdavFolderMissing =>
+      '対象フォルダが存在しません。先に WebDAV/Nutstore でフォルダを作成し、リモートファイルパスを一致させてください（例：/PassPro/passwords.log）。';
+
+  @override
   String get owner => 'オーナー';
 
   @override

@@ -282,6 +282,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Stored in the OS Keychain; never written to any file';
 
   @override
+  String repoNotFoundOrNoAccess(String repo) {
+    return 'Repository not found, or the token has no access: $repo';
+  }
+
+  @override
+  String get webdavFolderMissing =>
+      'Target folder doesn\'t exist. Create it in your WebDAV/Nutstore account first, and set the remote file path to match (e.g. /PassPro/passwords.log).';
+
+  @override
   String get owner => 'Owner';
 
   @override

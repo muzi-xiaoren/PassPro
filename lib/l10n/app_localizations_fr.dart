@@ -285,6 +285,15 @@ class AppLocalizationsFr extends AppLocalizations {
       'Stocké dans le trousseau du système ; jamais écrit dans un fichier';
 
   @override
+  String repoNotFoundOrNoAccess(String repo) {
+    return 'Dépôt introuvable ou le jeton n\'a pas accès : $repo';
+  }
+
+  @override
+  String get webdavFolderMissing =>
+      'Le dossier cible n\'existe pas. Créez-le d\'abord dans votre compte WebDAV/Nutstore et faites correspondre le chemin du fichier distant (par ex. /PassPro/passwords.log).';
+
+  @override
   String get owner => 'Propriétaire';
 
   @override

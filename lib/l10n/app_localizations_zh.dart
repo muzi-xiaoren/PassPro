@@ -273,6 +273,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get patHelper => '存进 OS Keychain，不会写入任何文件';
 
   @override
+  String repoNotFoundOrNoAccess(String repo) {
+    return '仓库不存在或令牌无权访问：$repo';
+  }
+
+  @override
+  String get webdavFolderMissing =>
+      '目标文件夹不存在：请先在坚果云/WebDAV 里创建该文件夹，并让“远程文件路径”与之对应（例如 /PassPro/passwords.log）。';
+
+  @override
   String get owner => '拥有者';
 
   @override

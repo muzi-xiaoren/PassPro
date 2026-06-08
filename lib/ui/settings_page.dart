@@ -333,8 +333,13 @@ class _BackendFormState extends State<_BackendForm> {
     } on SyncException catch (e) {
       setState(() {
         _testFailed = true;
-        _testMessage =
-            l10n.testFailHttp(e.statusCode?.toString() ?? '-', e.message);
+        _testMessage = switch (e.kind) {
+          SyncErrorKind.repoNotFound =>
+            l10n.repoNotFoundOrNoAccess('${cfg.owner}/${cfg.repo}'),
+          SyncErrorKind.webdavFolderMissing => l10n.webdavFolderMissing,
+          SyncErrorKind.http =>
+            l10n.testFailHttp(e.statusCode?.toString() ?? '-', e.message),
+        };
       });
     } catch (e) {
       setState(() {

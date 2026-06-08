@@ -618,6 +618,18 @@ abstract class AppLocalizations {
   /// **'Stored in the OS Keychain; never written to any file'**
   String get patHelper;
 
+  /// No description provided for @repoNotFoundOrNoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository not found, or the token has no access: {repo}'**
+  String repoNotFoundOrNoAccess(String repo);
+
+  /// No description provided for @webdavFolderMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Target folder doesn\'t exist. Create it in your WebDAV/Nutstore account first, and set the remote file path to match (e.g. /PassPro/passwords.log).'**
+  String get webdavFolderMissing;
+
   /// No description provided for @owner.
   ///
   /// In en, this message translates to:

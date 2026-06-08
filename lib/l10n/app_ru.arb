@@ -85,6 +85,8 @@
   "branch": "Ветка",
   "filePath": "Путь к файлу",
   "patHelper": "Хранится в связке ключей ОС; никогда не записывается в файлы",
+  "repoNotFoundOrNoAccess": "Репозиторий не найден или у токена нет доступа: {repo}",
+  "webdavFolderMissing": "Целевая папка не существует. Сначала создайте её в WebDAV/Nutstore и укажите соответствующий путь к удалённому файлу (например, /PassPro/passwords.log).",
   "owner": "Владелец",
   "personalAccessToken": "Персональный токен доступа",
   "webdavAccount": "Учётная запись",

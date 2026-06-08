@@ -283,6 +283,15 @@ class AppLocalizationsRu extends AppLocalizations {
       'Хранится в связке ключей ОС; никогда не записывается в файлы';
 
   @override
+  String repoNotFoundOrNoAccess(String repo) {
+    return 'Репозиторий не найден или у токена нет доступа: $repo';
+  }
+
+  @override
+  String get webdavFolderMissing =>
+      'Целевая папка не существует. Сначала создайте её в WebDAV/Nutstore и укажите соответствующий путь к удалённому файлу (например, /PassPro/passwords.log).';
+
+  @override
   String get owner => 'Владелец';
 
   @override

@@ -106,8 +106,9 @@ class GitBackend implements SyncBackend {
         .timeout(_timeout);
     if (repoResp.statusCode == 404) {
       throw SyncException(
-        '仓库不存在或令牌无权访问：${config.owner}/${config.repo}',
+        'repository not found or no access: ${config.owner}/${config.repo}',
         statusCode: 404,
+        kind: SyncErrorKind.repoNotFound,
       );
     }
     if (repoResp.statusCode >= 400) {

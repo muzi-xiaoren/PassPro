@@ -284,6 +284,15 @@ class AppLocalizationsDe extends AppLocalizations {
       'Im Schlüsselbund des Betriebssystems gespeichert; wird nie in eine Datei geschrieben';
 
   @override
+  String repoNotFoundOrNoAccess(String repo) {
+    return 'Repository nicht gefunden oder Token hat keinen Zugriff: $repo';
+  }
+
+  @override
+  String get webdavFolderMissing =>
+      'Zielordner existiert nicht. Erstellen Sie ihn zuerst in Ihrem WebDAV-/Nutstore-Konto und passen Sie den Remote-Dateipfad an (z. B. /PassPro/passwords.log).';
+
+  @override
   String get owner => 'Eigentümer';
 
   @override
