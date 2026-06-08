@@ -85,10 +85,26 @@ class WebDavBackend implements SyncBackend {
     return _versionFrom(resp);
   }
 
-  // WebDAV 没有"仓库"概念，鉴权失败(401)在 headVersion 已会抛出，
-  // 404/409 表示文件还没建（正常），所以测试连接直接复用 headVersion。
   @override
-  Future<String?> testConnection() => headVersion();
+  Future<String?> testConnection() async {
+    final req = http.Request('HEAD', _fileUri())..headers.addAll(_headers);
+    final streamed = await _http.send(req).timeout(_timeout);
+    final resp = await http.Response.fromStream(streamed);
+    // 文件夹已存在、文件还没建 → 正常（首次 push 会创建文件）。
+    if (resp.statusCode == 404) return null;
+    // 坚果云：父文件夹不存在时返回 409。坚果云不能通过 WebDAV 自动建顶层文件夹，
+    // 必须先在坚果云里手动建好，否则推送也会失败 —— 所以这里明确提示用户。
+    if (resp.statusCode == 409) {
+      throw SyncException(
+        '目标文件夹不存在：请先在坚果云里创建该文件夹，并让“远程文件路径”与之对应（例如 /PassPro/passwords.log）。',
+        statusCode: 409,
+      );
+    }
+    if (resp.statusCode >= 400) {
+      throw SyncException(resp.body, statusCode: resp.statusCode);
+    }
+    return _versionFrom(resp);
+  }
 
   @override
   Future<PushOutcome> push({

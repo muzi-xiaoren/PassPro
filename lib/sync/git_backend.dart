@@ -70,10 +70,14 @@ class GitBackend implements SyncBackend {
     if (resp.statusCode >= 400) {
       throw SyncException(resp.body, statusCode: resp.statusCode);
     }
-    final j = jsonDecode(resp.body) as Map<String, dynamic>;
-    final b64 = (j['content'] as String).replaceAll('\n', '');
+    final decoded = jsonDecode(resp.body);
+    // Gitee 对“空仓库 / 路径是目录”会返回 JSON 数组而非 404；都按“远端无文件”处理。
+    if (decoded is! Map<String, dynamic>) {
+      return RemoteSnapshot(content: Uint8List(0), version: null, exists: false);
+    }
+    final b64 = (decoded['content'] as String).replaceAll('\n', '');
     final bytes = base64.decode(b64);
-    final sha = j['sha'] as String;
+    final sha = decoded['sha'] as String;
     return RemoteSnapshot(content: bytes, version: sha, exists: true);
   }
 
@@ -86,8 +90,10 @@ class GitBackend implements SyncBackend {
     if (resp.statusCode >= 400) {
       throw SyncException(resp.body, statusCode: resp.statusCode);
     }
-    final j = jsonDecode(resp.body) as Map<String, dynamic>;
-    return j['sha'] as String?;
+    final decoded = jsonDecode(resp.body);
+    // Gitee 空仓库/目录返回数组 → 视为“文件还没建”。
+    if (decoded is! Map<String, dynamic>) return null;
+    return decoded['sha'] as String?;
   }
 
   @override
