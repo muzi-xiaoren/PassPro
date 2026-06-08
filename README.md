@@ -25,7 +25,7 @@
 
 | 平台      | 实际路径                                                                                                                                            |
 | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| macOS   | `~/Library/Containers/com.example.PassPro/Data/Library/Application Support/com.example.PassPro/PassPro/passwords.log`（App 已开启沙盒，落在 Container 内） |
+| macOS   | `~/Library/Application Support/com.example.PassPro/PassPro/passwords.log`（macOS 关闭沙盒后落在此处；旧沙盒容器内的数据会在首次启动时自动迁移过来） |
 | Windows | `%APPDATA%\com.example\PassPro\PassPro\passwords.log`（即 `C:\Users\<用户名>\AppData\Roaming\com.example\PassPro\PassPro\passwords.log`）             |
 | Linux   | `~/.local/share/passpro/PassPro/passwords.log`（遵循 `XDG_DATA_HOME`）                                                                              |
 | Android | 应用私有目录 `…/files/PassPro/passwords.log`（如 `/data/data/com.example.PassPro/files/PassPro/`，需 root 才能直接访问）                                         |

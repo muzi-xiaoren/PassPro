@@ -279,8 +279,9 @@ class _BackendFormState extends State<_BackendForm> {
             : _filePath.text.trim(),
       );
       await app.settings.updateBackend(updated);
-      if (_patChanged && _pat.text.isNotEmpty && _pat.text != '••••••••') {
-        await app.credentials.writePat(widget.initial.kind, _pat.text);
+      final pat = _pat.text.trim();
+      if (_patChanged && pat.isNotEmpty && pat != '••••••••') {
+        await app.credentials.writePat(widget.initial.kind, pat);
       }
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -301,9 +302,9 @@ class _BackendFormState extends State<_BackendForm> {
       _testMessage = null;
     });
     final app = context.read<AppState>();
-    var pat = _pat.text;
+    var pat = _pat.text.trim();
     if (pat == '••••••••' || pat.isEmpty) {
-      pat = await app.credentials.readPat(widget.initial.kind) ?? '';
+      pat = (await app.credentials.readPat(widget.initial.kind) ?? '').trim();
     }
     final cfg = widget.initial.copyWith(
       enabled: true,

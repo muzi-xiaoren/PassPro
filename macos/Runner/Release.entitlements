@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  注意：故意不开启 App Sandbox。
+  原因：本 app 用 flutter_secure_storage 把同步令牌存进 macOS 钥匙串(Keychain)。
+  沙盒下访问钥匙串必须带 keychain-access-groups 授权，而该授权要求用带 Apple
+  Team ID 的正式证书签名(Developer ID)。我们走的是 adhoc 自签发布(免费、无证书)，
+  无法满足，开沙盒会导致保存令牌时报 -34018 (errSecMissingEntitlement)。
+  去掉沙盒后，adhoc 签名也能正常读写登录钥匙串；代价是数据目录从沙盒容器
+  改为 ~/Library/Application Support/com.example.PassPro/（已在 LogStore 里做一次性迁移）。
+-->
 <plist version="1.0">
-<dict>
-	<key>com.apple.security.app-sandbox</key>
-	<true/>
-	<key>com.apple.security.network.client</key>
-	<true/>
-</dict>
+<dict/>
 </plist>

@@ -20,9 +20,44 @@ class LogStore {
     }
     final file = File(p.join(dir.path, 'passwords.log'));
     if (!await file.exists()) {
+      // 一次性迁移：早期 macOS 构建开启了 App Sandbox，数据写在沙盒容器内。
+      // 现已去掉沙盒（让 Keychain 在 adhoc 签名下可用），路径改为
+      // ~/Library/Application Support/com.example.PassPro/PassPro/passwords.log。
+      // 若新路径还没有文件、而旧容器里有数据，则搬过来，避免升级后“数据消失”。
+      await _migrateFromSandboxContainer(file);
+    }
+    if (!await file.exists()) {
       await file.writeAsString('');
     }
     return LogStore._(file);
+  }
+
+  /// macOS 专用：把旧沙盒容器里的 passwords.log 迁移到新（非沙盒）路径。
+  /// 失败不致命——当作全新空库继续即可。
+  static Future<void> _migrateFromSandboxContainer(File dest) async {
+    if (!Platform.isMacOS) return;
+    final home = Platform.environment['HOME'];
+    if (home == null || home.isEmpty) return;
+    final legacy = File(p.join(
+      home,
+      'Library',
+      'Containers',
+      'com.example.PassPro',
+      'Data',
+      'Library',
+      'Application Support',
+      'com.example.PassPro',
+      'PassPro',
+      'passwords.log',
+    ));
+    try {
+      if (await legacy.exists() && await legacy.length() > 0) {
+        await dest.parent.create(recursive: true);
+        await legacy.copy(dest.path);
+      }
+    } catch (_) {
+      // 旧容器读不到（权限/不存在）就忽略。
+    }
   }
 
   File get file => _file;
