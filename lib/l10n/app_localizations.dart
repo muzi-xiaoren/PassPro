@@ -720,6 +720,12 @@ abstract class AppLocalizations {
   /// **'failed'**
   String get syncMirrorFailed;
 
+  /// No description provided for @syncPrimaryResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary {backend} ({outcome})'**
+  String syncPrimaryResult(String backend, String outcome);
+
   /// No description provided for @repoNotFoundOrNoAccess.
   ///
   /// In en, this message translates to:

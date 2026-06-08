@@ -42,13 +42,15 @@ enum MirrorOutcome { ok, conflict, failed }
 class MirrorResult {
   final String backend; // 后端名：github / gitee / webdav
   final MirrorOutcome outcome;
-  const MirrorResult(this.backend, this.outcome);
+  final String? detail; // 失败原因（仅 failed 时有意义）
+  const MirrorResult(this.backend, this.outcome, {this.detail});
 }
 
 class SyncStatus {
   final SyncState state;
   final SyncMsg? msg;
   final String? arg;
+  final String? primaryBackend; // 主仓库后端名，用于"每个结果都说明一下"
   final List<MirrorResult> mirrors;
   final DateTime? lastSyncAt;
   final String? lastRemoteVersion;
@@ -57,6 +59,7 @@ class SyncStatus {
     this.state = SyncState.idle,
     this.msg,
     this.arg,
+    this.primaryBackend,
     this.mirrors = const [],
     this.lastSyncAt,
     this.lastRemoteVersion,
@@ -66,6 +69,7 @@ class SyncStatus {
     SyncState? state,
     SyncMsg? msg,
     String? arg,
+    String? primaryBackend,
     List<MirrorResult>? mirrors,
     DateTime? lastSyncAt,
     String? lastRemoteVersion,
@@ -74,6 +78,7 @@ class SyncStatus {
       state: state ?? this.state,
       msg: msg ?? this.msg,
       arg: arg ?? this.arg,
+      primaryBackend: primaryBackend ?? this.primaryBackend,
       mirrors: mirrors ?? this.mirrors,
       lastSyncAt: lastSyncAt ?? this.lastSyncAt,
       lastRemoteVersion: lastRemoteVersion ?? this.lastRemoteVersion,
@@ -253,6 +258,7 @@ class SyncManager extends ChangeNotifier {
       return false;
     }
 
+    final primaryName = primary.kind.name;
     final localBytes = await _readLocalBytes();
     String? baseVersion;
     try {
@@ -273,6 +279,7 @@ class SyncManager extends ChangeNotifier {
         state: SyncState.offline,
         msg: SyncMsg.primaryOffline,
         arg: '$e',
+        primaryBackend: primaryName,
       ));
       return false;
     } catch (e) {
@@ -280,6 +287,7 @@ class SyncManager extends ChangeNotifier {
         state: SyncState.error,
         msg: SyncMsg.primaryPushFailed,
         arg: '$e',
+        primaryBackend: primaryName,
       ));
       return false;
     }
@@ -293,6 +301,7 @@ class SyncManager extends ChangeNotifier {
       _setStatus(_status.copyWith(
         state: SyncState.error,
         msg: SyncMsg.pushConflictManual,
+        primaryBackend: primaryName,
       ));
       return false;
     }
@@ -306,39 +315,95 @@ class SyncManager extends ChangeNotifier {
       lastSyncAt: DateTime.now(),
       lastRemoteVersion: _knownRemoteVersion,
       msg: SyncMsg.pushedToPrimary,
+      primaryBackend: primaryName,
       mirrors: mirrors,
     ));
     return true;
   }
 
   /// 把本地内容尽力推送到每个 mirror，逐个返回结果（不抛异常）。
+  /// 冲突时自动 pull+merge+强制覆盖（副仓库是下游副本，最终应与本地一致且不丢数据）；
+  /// 失败时把错误详情一并带回，便于 UI 明确说明每个结果的原因。
   Future<List<MirrorResult>> _pushMirrors(
     Uint8List localBytes,
-    String commitMessage,
-  ) async {
+    String commitMessage, {
+    bool merge = true,
+  }) async {
     final results = <MirrorResult>[];
     for (final m in await _mirrors()) {
+      final name = m.kind.name;
       try {
         String? mv;
         try {
           mv = await m.headVersion();
         } catch (_) {}
-        final mo = await m.push(
+        var mo = await m.push(
           content: localBytes,
           baseVersion: mv,
           commitMessage: commitMessage,
         );
+        if (mo == PushOutcome.conflict) {
+          mo = await _resolveMirrorConflict(
+            m,
+            localBytes,
+            commitMessage,
+            merge: merge,
+          );
+        }
         results.add(MirrorResult(
-          m.kind.name,
+          name,
           mo == PushOutcome.conflict
               ? MirrorOutcome.conflict
               : MirrorOutcome.ok,
         ));
-      } catch (_) {
-        results.add(MirrorResult(m.kind.name, MirrorOutcome.failed));
+      } catch (e) {
+        results.add(MirrorResult(
+          name,
+          MirrorOutcome.failed,
+          detail: _shortError(e),
+        ));
       }
     }
     return results;
+  }
+
+  /// 副仓库冲突兜底：强制覆盖远端，消除坚果云 ETag 漂移造成的"假冲突"，
+  /// 也让落后的副本追平。
+  ///   - [merge]=true（普通同步）：先拉远端，与本地按 record_id 合并（任一端条目都不丢）再写，
+  ///     避免覆盖掉副本上独有的条目。
+  ///   - [merge]=false（"用本地覆盖云端"）：尊重用户意图，直接以本地内容覆盖。
+  Future<PushOutcome> _resolveMirrorConflict(
+    SyncBackend m,
+    Uint8List localBytes,
+    String commitMessage, {
+    bool merge = true,
+  }) async {
+    final snap = await m.pull();
+    var toPush = localBytes;
+    if (merge && snap.exists && snap.content.isNotEmpty) {
+      final merged = mergeLogs(_parseLog(localBytes), _parseLog(snap.content));
+      toPush = _serializeLog(merged);
+    }
+    return m.push(
+      content: toPush,
+      baseVersion: snap.version,
+      commitMessage: commitMessage,
+      force: true,
+    );
+  }
+
+  /// 把日志记录序列化成与本地文件一致的字节（每行 toLine() + '\n'）。
+  Uint8List _serializeLog(List<LogRecord> records) {
+    final sb = StringBuffer();
+    for (final r in records) {
+      sb.writeln(r.toLine());
+    }
+    return Uint8List.fromList(utf8.encode(sb.toString()));
+  }
+
+  String _shortError(Object e) {
+    final s = e.toString();
+    return s.length > 200 ? '${s.substring(0, 200)}…' : s;
   }
 
   /// 用云端覆盖本地：拉取远端快照并**完全替换**本地日志（不合并）。
@@ -414,6 +479,7 @@ class SyncManager extends ChangeNotifier {
       return false;
     }
 
+    final primaryName = primary.kind.name;
     final localBytes = await _readLocalBytes();
 
     Future<PushOutcome> pushWithCurrentHead() async {
@@ -442,6 +508,7 @@ class SyncManager extends ChangeNotifier {
         state: SyncState.offline,
         msg: SyncMsg.primaryOffline,
         arg: '$e',
+        primaryBackend: primaryName,
       ));
       return false;
     } catch (e) {
@@ -449,6 +516,7 @@ class SyncManager extends ChangeNotifier {
         state: SyncState.error,
         msg: SyncMsg.primaryOverwriteFailed,
         arg: '$e',
+        primaryBackend: primaryName,
       ));
       return false;
     }
@@ -457,12 +525,13 @@ class SyncManager extends ChangeNotifier {
       _setStatus(_status.copyWith(
         state: SyncState.error,
         msg: SyncMsg.overwriteRemoteStillChanging,
+        primaryBackend: primaryName,
       ));
       return false;
     }
 
-    // primary 成功后再尽力覆盖 mirror（同样以各自当前版本为基线）
-    final mirrors = await _pushMirrors(localBytes, commitMessage);
+    // primary 成功后再尽力覆盖 mirror；冲突时直接以本地强制覆盖（不合并，尊重"用本地覆盖"意图）
+    final mirrors = await _pushMirrors(localBytes, commitMessage, merge: false);
 
     _knownRemoteVersion = await primary.headVersion();
     _setStatus(_status.copyWith(
@@ -470,6 +539,7 @@ class SyncManager extends ChangeNotifier {
       lastSyncAt: DateTime.now(),
       lastRemoteVersion: _knownRemoteVersion,
       msg: SyncMsg.overwroteRemoteWithLocal,
+      primaryBackend: primaryName,
       mirrors: mirrors,
     ));
     return true;

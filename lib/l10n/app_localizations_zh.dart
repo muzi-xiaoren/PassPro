@@ -338,6 +338,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get syncMirrorFailed => '失败';
 
   @override
+  String syncPrimaryResult(String backend, String outcome) {
+    return '主仓库 $backend（$outcome）';
+  }
+
+  @override
   String repoNotFoundOrNoAccess(String repo) {
     return '仓库不存在或令牌无权访问：$repo';
   }

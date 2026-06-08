@@ -84,32 +84,53 @@ String? _syncStatusText(AppLocalizations l10n, SyncStatus s) {
   final msg = s.msg;
   if (msg == null) return null;
   final arg = s.arg ?? '';
-  final base = switch (msg) {
-    SyncMsg.allBackendsPullFailed => l10n.syncAllBackendsPullFailed(arg),
-    SyncMsg.pulledFrom => l10n.syncPulledFrom(arg),
-    SyncMsg.noPrimary => l10n.syncNoPrimary,
-    SyncMsg.primaryOffline => l10n.syncPrimaryOffline(arg),
-    SyncMsg.primaryPushFailed => l10n.syncPrimaryPushFailed(arg),
-    SyncMsg.pushConflictManual => l10n.syncPushConflictManual,
-    SyncMsg.pushedToPrimary => l10n.syncPushedPrimary,
-    SyncMsg.remoteEmptySkipped => l10n.syncRemoteEmptySkipped,
-    SyncMsg.overwroteLocalFrom => l10n.syncOverwroteLocalFrom(arg),
-    SyncMsg.primaryOverwriteFailed => l10n.syncPrimaryOverwriteFailed(arg),
-    SyncMsg.overwriteRemoteStillChanging =>
-      l10n.syncOverwriteRemoteStillChanging,
-    SyncMsg.overwroteRemoteWithLocal => l10n.syncOverwroteRemoteWithLocal,
-    SyncMsg.genericError => l10n.syncGenericError(arg),
-  };
-  if (s.mirrors.isEmpty) return base;
-  final summary = s.mirrors.map((m) {
-    final word = switch (m.outcome) {
-      MirrorOutcome.ok => l10n.syncMirrorOk,
-      MirrorOutcome.conflict => l10n.syncMirrorConflict,
-      MirrorOutcome.failed => l10n.syncMirrorFailed,
-    };
-    return '${m.backend} ($word)';
-  }).join(', ');
-  return '$base · ${l10n.syncMirrorsLabel}: $summary';
+  final primary = s.primaryBackend ?? '';
+
+  String word(MirrorOutcome o) => switch (o) {
+        MirrorOutcome.ok => l10n.syncMirrorOk,
+        MirrorOutcome.conflict => l10n.syncMirrorConflict,
+        MirrorOutcome.failed => l10n.syncMirrorFailed,
+      };
+
+  // 副仓库逐个结果（失败附原因）："· 副仓库: gitee (失败: ...), webdav (成功)"。
+  String mirrorsPart() {
+    if (s.mirrors.isEmpty) return '';
+    final summary = s.mirrors.map((m) {
+      final extra =
+          (m.outcome == MirrorOutcome.failed && (m.detail?.isNotEmpty ?? false))
+              ? ': ${m.detail}'
+              : '';
+      return '${m.backend} (${word(m.outcome)}$extra)';
+    }).join(', ');
+    return ' · ${l10n.syncMirrorsLabel}: $summary';
+  }
+
+  // 主仓库结果统一呈现为"主仓库 <后端> (<结果>)"，每个结果都明确说明（含失败/冲突原因）。
+  switch (msg) {
+    case SyncMsg.pushedToPrimary:
+    case SyncMsg.overwroteRemoteWithLocal:
+      return l10n.syncPrimaryResult(primary, word(MirrorOutcome.ok)) +
+          mirrorsPart();
+    case SyncMsg.primaryPushFailed:
+    case SyncMsg.primaryOverwriteFailed:
+    case SyncMsg.primaryOffline:
+      return '${l10n.syncPrimaryResult(primary, word(MirrorOutcome.failed))}: $arg';
+    case SyncMsg.pushConflictManual:
+    case SyncMsg.overwriteRemoteStillChanging:
+      return l10n.syncPrimaryResult(primary, word(MirrorOutcome.conflict));
+    case SyncMsg.noPrimary:
+      return l10n.syncNoPrimary;
+    case SyncMsg.pulledFrom:
+      return l10n.syncPulledFrom(arg);
+    case SyncMsg.allBackendsPullFailed:
+      return l10n.syncAllBackendsPullFailed(arg);
+    case SyncMsg.remoteEmptySkipped:
+      return l10n.syncRemoteEmptySkipped;
+    case SyncMsg.overwroteLocalFrom:
+      return l10n.syncOverwroteLocalFrom(arg);
+    case SyncMsg.genericError:
+      return l10n.syncGenericError(arg);
+  }
 }
 
 class _SyncStatusBadge extends StatelessWidget {

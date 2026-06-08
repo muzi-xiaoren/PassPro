@@ -102,6 +102,7 @@
   "syncMirrorOk": "成功",
   "syncMirrorConflict": "競合",
   "syncMirrorFailed": "失敗",
+  "syncPrimaryResult": "プライマリ {backend}（{outcome}）",
   "repoNotFoundOrNoAccess": "リポジトリが見つからないか、トークンにアクセス権がありません：{repo}",
   "webdavFolderMissing": "対象フォルダが存在しません。先に WebDAV/Nutstore でフォルダを作成し、リモートファイルパスを一致させてください（例：/PassPro/passwords.log）。",
   "owner": "オーナー",

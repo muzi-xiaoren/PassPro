@@ -102,6 +102,7 @@
   "syncMirrorOk": "ok",
   "syncMirrorConflict": "Konflikt",
   "syncMirrorFailed": "fehlgeschlagen",
+  "syncPrimaryResult": "Primär {backend} ({outcome})",
   "repoNotFoundOrNoAccess": "Repository nicht gefunden oder Token hat keinen Zugriff: {repo}",
   "webdavFolderMissing": "Zielordner existiert nicht. Erstellen Sie ihn zuerst in Ihrem WebDAV-/Nutstore-Konto und passen Sie den Remote-Dateipfad an (z. B. /PassPro/passwords.log).",
   "owner": "Eigentümer",

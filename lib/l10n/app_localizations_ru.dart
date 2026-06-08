@@ -352,6 +352,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get syncMirrorFailed => 'сбой';
 
   @override
+  String syncPrimaryResult(String backend, String outcome) {
+    return 'Основной $backend ($outcome)';
+  }
+
+  @override
   String repoNotFoundOrNoAccess(String repo) {
     return 'Репозиторий не найден или у токена нет доступа: $repo';
   }

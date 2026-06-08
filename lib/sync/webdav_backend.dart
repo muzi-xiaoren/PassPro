@@ -112,8 +112,23 @@ class WebDavBackend implements SyncBackend {
     required Uint8List content,
     required String? baseVersion,
     required String commitMessage,
+    bool force = false,
   }) async {
     await _ensureDirectories();
+    // force（副仓库冲突兜底）：不带任何 If-Match/If-None-Match，直接覆盖。
+    // 坚果云 ETag 不稳定，条件请求会反复 412 假冲突，强制写入才能可靠收敛。
+    if (force) {
+      final resp = await _http
+          .put(_fileUri(), headers: {
+            ..._headers,
+            'Content-Type': 'application/octet-stream',
+          }, body: content)
+          .timeout(_timeout);
+      if (resp.statusCode >= 400) {
+        throw SyncException(resp.body, statusCode: resp.statusCode);
+      }
+      return PushOutcome.ok;
+    }
     final headers = {
       ..._headers,
       'Content-Type': 'application/octet-stream',

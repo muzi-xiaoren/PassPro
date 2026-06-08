@@ -123,22 +123,41 @@ class GitBackend implements SyncBackend {
     required Uint8List content,
     required String? baseVersion,
     required String commitMessage,
+    bool force = false,
   }) async {
+    var sha = baseVersion;
+    // force（副仓库冲突兜底）：取一次远端最新 sha，确保更新命中现有文件；
+    // 文件不存在则 sha=null，走"新建"分支。
+    if (force) {
+      try {
+        sha = await headVersion();
+      } catch (_) {}
+    }
     final body = <String, Object?>{
       'message': commitMessage,
       'content': base64.encode(content),
       'branch': config.branch,
-      if (baseVersion != null) 'sha': baseVersion,
+      if (sha != null) 'sha': sha,
     };
-    final resp = await _http
-        .put(
-          _contentsUri(),
-          headers: {..._headers, 'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        )
+    final headers = {..._headers, 'Content-Type': 'application/json'};
+    final payload = jsonEncode(body);
+    // 关键差异：Gitee 区分「新建文件 = POST」与「更新文件 = PUT(必须带 sha)」；
+    // GitHub 则 PUT 同时支持新建与更新。所以 Gitee 新建（sha 为空）必须用 POST，
+    // 否则 PUT 缺 sha 会被拒绝 —— 这正是"测试成功但 push 失败"的根因。
+    final isGiteeCreate = kind == BackendKind.gitee && sha == null;
+    final resp = await (isGiteeCreate
+            ? _http.post(_contentsUri(), headers: headers, body: payload)
+            : _http.put(_contentsUri(), headers: headers, body: payload))
         .timeout(_timeout);
+    // 冲突 = 基线不一致 / 远端已存在：
+    //   - GitHub 更新 sha 不匹配 → 422 且提示含 "sha"
+    //   - Gitee 新建时文件其实已存在 → 400/409/422，提示含 "exist" / "已经存在"
+    final lowerBody = resp.body.toLowerCase();
     if (resp.statusCode == 409 ||
-        (resp.statusCode == 422 && resp.body.contains('sha'))) {
+        (resp.statusCode == 422 && lowerBody.contains('sha')) ||
+        (isGiteeCreate &&
+            (resp.statusCode == 400 || resp.statusCode == 422) &&
+            (lowerBody.contains('exist') || resp.body.contains('已经存在')))) {
       return PushOutcome.conflict;
     }
     if (resp.statusCode >= 400) {

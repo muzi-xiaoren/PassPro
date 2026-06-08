@@ -11,10 +11,14 @@ abstract class SyncBackend {
   Future<RemoteSnapshot> pull();
 
   /// 上传新内容；需要带上"基线 version"，远端若不一致返回冲突（[PushOutcome.conflict]）。
+  ///
+  /// [force] = true 时**无条件覆盖**远端（忽略基线校验）。用于副仓库冲突兜底：
+  /// 先 pull+merge 保证不丢数据，再强制写入，避免坚果云 ETag 漂移导致反复假冲突。
   Future<PushOutcome> push({
     required Uint8List content,
     required String? baseVersion,
     required String commitMessage,
+    bool force = false,
   });
 
   /// 仅检查远端最新 version，用于"智能跳过"。失败抛异常。

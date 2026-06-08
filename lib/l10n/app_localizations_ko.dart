@@ -341,6 +341,11 @@ class AppLocalizationsKo extends AppLocalizations {
   String get syncMirrorFailed => '실패';
 
   @override
+  String syncPrimaryResult(String backend, String outcome) {
+    return '기본 $backend ($outcome)';
+  }
+
+  @override
   String repoNotFoundOrNoAccess(String repo) {
     return '저장소를 찾을 수 없거나 토큰에 접근 권한이 없습니다: $repo';
   }

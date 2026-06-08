@@ -121,6 +121,8 @@
   "syncMirrorOk": "ok",
   "syncMirrorConflict": "conflict",
   "syncMirrorFailed": "failed",
+  "syncPrimaryResult": "Primary {backend} ({outcome})",
+  "@syncPrimaryResult": { "placeholders": { "backend": { "type": "String" }, "outcome": { "type": "String" } } },
   "repoNotFoundOrNoAccess": "Repository not found, or the token has no access: {repo}",
   "@repoNotFoundOrNoAccess": { "placeholders": { "repo": { "type": "String" } } },
   "webdavFolderMissing": "Target folder doesn't exist. Create it in your WebDAV/Nutstore account first, and set the remote file path to match (e.g. /PassPro/passwords.log).",

@@ -102,6 +102,7 @@
   "syncMirrorOk": "ок",
   "syncMirrorConflict": "конфликт",
   "syncMirrorFailed": "сбой",
+  "syncPrimaryResult": "Основной {backend} ({outcome})",
   "repoNotFoundOrNoAccess": "Репозиторий не найден или у токена нет доступа: {repo}",
   "webdavFolderMissing": "Целевая папка не существует. Сначала создайте её в WebDAV/Nutstore и укажите соответствующий путь к удалённому файлу (например, /PassPro/passwords.log).",
   "owner": "Владелец",

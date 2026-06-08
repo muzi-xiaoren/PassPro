@@ -353,6 +353,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get syncMirrorFailed => 'échec';
 
   @override
+  String syncPrimaryResult(String backend, String outcome) {
+    return 'Principal $backend ($outcome)';
+  }
+
+  @override
   String repoNotFoundOrNoAccess(String repo) {
     return 'Dépôt introuvable ou le jeton n\'a pas accès : $repo';
   }
