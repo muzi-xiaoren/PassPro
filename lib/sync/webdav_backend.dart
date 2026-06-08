@@ -52,7 +52,9 @@ class WebDavBackend implements SyncBackend {
   @override
   Future<RemoteSnapshot> pull() async {
     final resp = await _http.get(_fileUri(), headers: _headers).timeout(_timeout);
-    if (resp.statusCode == 404) {
+    // 坚果云在“父文件夹尚不存在”时返回 409 而非 404；读取场景下都按“远端无文件”处理，
+    // 首次 push 会用 MKCOL 自动建好目录。
+    if (resp.statusCode == 404 || resp.statusCode == 409) {
       return RemoteSnapshot(
         content: Uint8List(0),
         version: null,
@@ -74,7 +76,9 @@ class WebDavBackend implements SyncBackend {
     final req = http.Request('HEAD', _fileUri())..headers.addAll(_headers);
     final streamed = await _http.send(req).timeout(_timeout);
     final resp = await http.Response.fromStream(streamed);
-    if (resp.statusCode == 404) return null;
+    // 404 = 文件不存在；409 = 坚果云“父文件夹还没建”。测试连接时两者都视为“暂无文件”，
+    // 不当作失败（首次 push 会自动建目录并创建文件）。
+    if (resp.statusCode == 404 || resp.statusCode == 409) return null;
     if (resp.statusCode >= 400) {
       throw SyncException(resp.body, statusCode: resp.statusCode);
     }
