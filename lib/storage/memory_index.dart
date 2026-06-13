@@ -1,11 +1,14 @@
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 import '../crypto/fernet_crypto.dart';
 import '../models/password_entry.dart';
 
 /// 内存里的"活记录"索引：record_id → 最新一条 LogRecord。
 /// 启动时由 [replay] 一次性扫日志构建；之后所有 CRUD 都直接动它。
-class MemoryIndex {
+///
+/// 同时是 [ChangeNotifier]：任何写操作（[apply]/[replay]）后都会通知监听者，
+/// 让列表/查询界面无需手动 setState 即可热更新（修复"删除后需切换界面才刷新"）。
+class MemoryIndex extends ChangeNotifier {
   /// 仅密文索引：不需要主密钥即可加载。明文密码只在调用 [decryptPassword] 时即时解密。
   final Map<String, LogRecord> _records = {};
 
@@ -33,6 +36,7 @@ class MemoryIndex {
           _records.remove(r.id);
       }
     }
+    notifyListeners();
   }
 
   /// 把一条新追加的日志应用到内存（不重置扫描计数）。
@@ -45,6 +49,7 @@ class MemoryIndex {
       case LogOp.delete:
         _records.remove(r.id);
     }
+    notifyListeners();
   }
 
   /// 查找：把输入网址按 :// / . 拆成关键词集合，与每条记录的关键词集合求交集。

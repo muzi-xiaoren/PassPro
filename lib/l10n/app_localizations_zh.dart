@@ -242,6 +242,15 @@ class AppLocalizationsZh extends AppLocalizations {
       'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro';
 
   @override
+  String get aboutVersionLabel => '版本';
+
+  @override
+  String get aboutAuthorLabel => '作者';
+
+  @override
+  String get aboutRepoLabel => '仓库';
+
+  @override
   String compactDone(int count, String size) {
     return '已整理：$count 条有效记录，节省 $size';
   }

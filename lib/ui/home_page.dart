@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../app_state.dart';
 import '../l10n/app_localizations.dart';
 import '../models/password_entry.dart';
+import '../settings/app_settings.dart';
 import '../storage/vault_repository.dart';
 import '../sync/sync_manager.dart';
 import 'password_generator.dart';
@@ -140,7 +141,8 @@ class _SyncStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final sync = context.watch<SyncManager>();
     final s = sync.status;
-    final enabled = context.read<AppState>().settings.cloudEnabled;
+    // 监听 AppSettings：第一次开启云同步即刻显示同步图标，无需重启 app。
+    final enabled = context.watch<AppSettings>().cloudEnabled;
     if (!enabled) return const SizedBox.shrink();
 
     final l10n = AppLocalizations.of(context)!;
@@ -450,11 +452,24 @@ class _QueryTabState extends State<_QueryTab> {
   final _ctrl = TextEditingController();
   QueryResult? _result;
   String? _emptyMessage;
+  late final _index = context.read<AppState>().vault.index;
+
+  @override
+  void initState() {
+    super.initState();
+    _index.addListener(_onIndexChanged);
+  }
 
   @override
   void dispose() {
+    _index.removeListener(_onIndexChanged);
     _ctrl.dispose();
     super.dispose();
+  }
+
+  /// 索引变化（删除/编辑/同步）后，若已有查询结果则自动重查，保持热更新。
+  void _onIndexChanged() {
+    if (mounted && _result != null) _doQuery();
   }
 
   void _doQuery() {
@@ -873,11 +888,24 @@ class _ListTab extends StatefulWidget {
 
 class _ListTabState extends State<_ListTab> {
   late _ListSort _sort;
+  late final _index = context.read<AppState>().vault.index;
 
   @override
   void initState() {
     super.initState();
     _sort = _sortFromName(context.read<AppState>().settings.listSort);
+    // 索引变化（增删改 / 同步拉取）后即时刷新列表，无需切换界面。
+    _index.addListener(_onIndexChanged);
+  }
+
+  @override
+  void dispose() {
+    _index.removeListener(_onIndexChanged);
+    super.dispose();
+  }
+
+  void _onIndexChanged() {
+    if (mounted) setState(() {});
   }
 
   _ListSort _sortFromName(String name) => _ListSort.values.firstWhere(
@@ -973,7 +1001,7 @@ class _ListTabState extends State<_ListTab> {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppState>();
+    final app = context.read<AppState>();
     final l10n = AppLocalizations.of(context)!;
     final records = app.vault.index.activeRecords.toList(growable: false)
       ..sort(_compare);

@@ -82,6 +82,9 @@
   "compactNow": "Compact the log now",
   "sectionAbout": "About",
   "aboutSubtitle": "GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro",
+  "aboutVersionLabel": "Version",
+  "aboutAuthorLabel": "Author",
+  "aboutRepoLabel": "Repository",
   "compactDone": "Compacted: {count} active records, saved {size}",
   "@compactDone": {
     "placeholders": { "count": { "type": "int" }, "size": { "type": "String" } }

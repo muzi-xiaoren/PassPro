@@ -564,6 +564,24 @@ abstract class AppLocalizations {
   /// **'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro'**
   String get aboutSubtitle;
 
+  /// No description provided for @aboutVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get aboutVersionLabel;
+
+  /// No description provided for @aboutAuthorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Author'**
+  String get aboutAuthorLabel;
+
+  /// No description provided for @aboutRepoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository'**
+  String get aboutRepoLabel;
+
   /// No description provided for @compactDone.
   ///
   /// In en, this message translates to:

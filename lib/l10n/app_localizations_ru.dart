@@ -251,6 +251,15 @@ class AppLocalizationsRu extends AppLocalizations {
       'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro';
 
   @override
+  String get aboutVersionLabel => 'Версия';
+
+  @override
+  String get aboutAuthorLabel => 'Автор';
+
+  @override
+  String get aboutRepoLabel => 'Репозиторий';
+
+  @override
   String compactDone(int count, String size) {
     return 'Сжато: активных записей $count, сэкономлено $size';
   }

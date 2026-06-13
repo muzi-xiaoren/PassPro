@@ -244,6 +244,15 @@ class AppLocalizationsJa extends AppLocalizations {
       'GitHub: muzi-xiaoren · https://github.com/muzi-xiaoren/PassPro';
 
   @override
+  String get aboutVersionLabel => 'バージョン';
+
+  @override
+  String get aboutAuthorLabel => '作者';
+
+  @override
+  String get aboutRepoLabel => 'リポジトリ';
+
+  @override
   String compactDone(int count, String size) {
     return '整理しました：有効レコード $count 件、$size を節約';
   }

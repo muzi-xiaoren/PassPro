@@ -4,6 +4,12 @@
 
 A cross-platform local password manager.
 
+## Screenshots (Android)
+
+| Query | Add | List | Settings |
+| :--: | :--: | :--: | :--: |
+| <img src="screenshots/android-query.jpg" width="200" alt="Query" /> | <img src="screenshots/android-add.jpg" width="200" alt="Add" /> | <img src="screenshots/android-list.jpg" width="200" alt="List" /> | <img src="screenshots/android-settings.jpg" width="200" alt="Settings" /> |
+
 ## Design highlights
 
 - **Encryption**: SHA-256 derivation + Fernet symmetric encryption
@@ -124,7 +130,7 @@ least one **Primary** backend; optionally add a **Mirror** as backup.
 
 ### Gitee
 
-1. Create a **private repository** (for example, `passpro`).
+1. Create a **private repository** (for example, `passpro`). No need to initialize it — the App creates `passwords.log` (and the `master` branch) on the first push.
 2. Create a private token with the `projects` scope.
 3. Fill in the App settings:
    - Role: Mirror (or Primary)

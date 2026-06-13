@@ -97,6 +97,7 @@ class AppSettings extends ChangeNotifier {
   static const _kLocale = 'locale_code';
   static const _kListSort = 'list_sort';
   static const _kMasterKeyVisible = 'master_key_visible';
+  static const _kWindowFrame = 'window_frame';
 
   final SharedPreferences _prefs;
 
@@ -122,6 +123,24 @@ class AppSettings extends ChangeNotifier {
   /// 主密钥输入框是否默认明文可见（持久化）。默认 false（隐藏）。
   /// 解锁页与“更换密钥”弹窗共用此偏好。
   bool get masterKeyVisible => _prefs.getBool(_kMasterKeyVisible) ?? false;
+
+  /// 上次关闭时的桌面窗口位置/大小：[left, top, width, height]。
+  /// 无记录（首次启动）返回 null —— 此时由调用方居中并用默认尺寸。
+  List<double>? get windowFrame {
+    final raw = _prefs.getString(_kWindowFrame);
+    if (raw == null) return null;
+    try {
+      final l = (jsonDecode(raw) as List).map((e) => (e as num).toDouble()).toList();
+      return l.length == 4 ? l : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 持久化桌面窗口位置/大小。不触发 UI 重建（窗口几何与 widget 树无关）。
+  Future<void> setWindowFrame(double left, double top, double width, double height) async {
+    await _prefs.setString(_kWindowFrame, jsonEncode([left, top, width, height]));
+  }
 
   BackendConfig get github => _loadBackend(_kBackendGithub, BackendKind.github);
   BackendConfig get gitee => _loadBackend(_kBackendGitee, BackendKind.gitee);

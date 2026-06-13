@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
 import '../l10n/app_localizations.dart';
@@ -89,11 +90,7 @@ class SettingsPage extends StatelessWidget {
 
           const Divider(),
           _SectionHeader(l10n.sectionAbout),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('PassPro'),
-            subtitle: Text(l10n.aboutSubtitle),
-          ),
+          const _AboutSection(),
         ],
       ),
     );
@@ -145,6 +142,121 @@ class _SectionHeader extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
       ),
+    );
+  }
+}
+
+// ============ 关于（两列布局 + 可点击跳转 GitHub） ============
+
+class _AboutSection extends StatelessWidget {
+  const _AboutSection();
+
+  static const String _version = '1.0.1';
+  static const String _author = 'muzi-xiaoren';
+  static const String _repoUrl = 'https://github.com/muzi-xiaoren/PassPro';
+  static const String _repoLabel = 'github.com/muzi-xiaoren/PassPro';
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.info_outline, size: 20),
+              const SizedBox(width: 8),
+              Text('PassPro', style: theme.textTheme.titleMedium),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _AboutRow(label: l10n.aboutVersionLabel, child: const Text(_version)),
+          const SizedBox(height: 8),
+          _AboutRow(label: l10n.aboutAuthorLabel, child: const Text(_author)),
+          const SizedBox(height: 8),
+          _AboutRow(
+            label: l10n.aboutRepoLabel,
+            child: InkWell(
+              onTap: () => _openRepo(context),
+              borderRadius: BorderRadius.circular(4),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _repoLabel,
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          decoration: TextDecoration.underline,
+                          decorationColor: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.open_in_new,
+                        size: 16, color: theme.colorScheme.primary),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openRepo(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    var launched = false;
+    try {
+      launched = await launchUrl(
+        Uri.parse(_repoUrl),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      launched = false;
+    }
+    // 打开失败时回退：把地址提示出来，便于用户手动复制访问。
+    if (!launched) {
+      messenger.showSnackBar(const SnackBar(content: Text(_repoUrl)));
+    }
+  }
+}
+
+/// 关于页的一行：左列标签（定宽）+ 右列内容（自适应），即"两列"布局。
+class _AboutRow extends StatelessWidget {
+  const _AboutRow({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 96,
+          child: Text(
+            label,
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.outline),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: DefaultTextStyle.merge(
+            style: theme.textTheme.bodyMedium ?? const TextStyle(),
+            child: child,
+          ),
+        ),
+      ],
     );
   }
 }
