@@ -440,6 +440,8 @@ class _QueryTabState extends State<_QueryTab> {
   final _ctrl = TextEditingController();
   QueryResult? _result;
   String? _emptyMessage;
+  // 自动补全：输入时按已有网站名实时筛出包含该串的网站，点击即查询。
+  List<String> _suggestions = const [];
   late final _index = context.read<AppState>().vault.index;
 
   @override
@@ -469,7 +471,64 @@ class _QueryTabState extends State<_QueryTab> {
       _emptyMessage = r.invalidKey
           ? l10n.queryInvalidKey
           : (r.isEmpty ? l10n.queryNoMatch : null);
+      _suggestions = const [];
     });
+  }
+
+  /// 输入变化：从当前库的网站名里筛出包含输入串的（去重、前缀优先），做点击补全。
+  void _onQueryChanged(String text) {
+    final q = text.trim().toLowerCase();
+    if (q.isEmpty) {
+      if (_suggestions.isNotEmpty) setState(() => _suggestions = const []);
+      return;
+    }
+    final names = <String>{};
+    for (final r in context.read<AppState>().vault.index.activeRecords) {
+      final w = r.website ?? '';
+      if (w.isNotEmpty && w.toLowerCase().contains(q)) names.add(w);
+    }
+    final list = names.toList()
+      ..sort((a, b) {
+        // 前缀匹配优先，其次按字母序
+        final ap = a.toLowerCase().startsWith(q) ? 0 : 1;
+        final bp = b.toLowerCase().startsWith(q) ? 0 : 1;
+        if (ap != bp) return ap - bp;
+        return a.toLowerCase().compareTo(b.toLowerCase());
+      });
+    setState(() => _suggestions = list.take(10).toList());
+  }
+
+  /// 点击某个补全项：填入输入框并立即查询。
+  void _pickSuggestion(String website) {
+    _ctrl.text = website;
+    _ctrl.selection = TextSelection.collapsed(offset: website.length);
+    FocusScope.of(context).unfocus();
+    _doQuery();
+  }
+
+  Widget _buildSuggestions() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      constraints: const BoxConstraints(maxHeight: 220),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).dividerColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ListView.builder(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: _suggestions.length,
+        itemBuilder: (_, i) {
+          final w = _suggestions[i];
+          return ListTile(
+            dense: true,
+            leading: const Icon(Icons.public, size: 18),
+            title: Text(w),
+            onTap: () => _pickSuggestion(w),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -483,10 +542,10 @@ class _QueryTabState extends State<_QueryTab> {
           TextField(
             controller: _ctrl,
             textInputAction: TextInputAction.search,
+            onChanged: _onQueryChanged,
             onSubmitted: (_) => _doQuery(),
             decoration: InputDecoration(
               labelText: l10n.queryFieldLabel,
-              hintText: 'github.com / muzi-xiaoren',
               prefixIcon: const Icon(Icons.search),
               border: const OutlineInputBorder(),
               suffixIcon: IconButton(
@@ -496,6 +555,7 @@ class _QueryTabState extends State<_QueryTab> {
             ),
           ),
           const SizedBox(height: 12),
+          if (_suggestions.isNotEmpty) _buildSuggestions(),
           Expanded(
             child: _buildBody(),
           ),
@@ -688,6 +748,13 @@ class _AddTabState extends State<_AddTab> {
   bool _upper = true, _lower = true, _digits = true, _special = true;
 
   @override
+  void initState() {
+    super.initState();
+    // 进入新增页即预生成一个密码，省去手动点击“生成”。
+    _password.text = _buildPassword();
+  }
+
+  @override
   void dispose() {
     _website.dispose();
     _username.dispose();
@@ -696,17 +763,18 @@ class _AddTabState extends State<_AddTab> {
     super.dispose();
   }
 
-  void _generate() {
+  String _buildPassword() {
     final n = int.tryParse(_length.text) ?? 20;
-    _password.text = PasswordGenerator.generate(
+    return PasswordGenerator.generate(
       length: n,
       useUpper: _upper,
       useLower: _lower,
       useDigits: _digits,
       useSpecial: _special,
     );
-    setState(() {});
   }
+
+  void _generate() => setState(() => _password.text = _buildPassword());
 
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
@@ -736,7 +804,7 @@ class _AddTabState extends State<_AddTab> {
     if (ok) {
       _website.clear();
       _username.clear();
-      _password.clear();
+      _password.text = _buildPassword(); // 存完再预生成一个，下次新增无需手动点
       await _maybePromptPush(context);
     }
   }
