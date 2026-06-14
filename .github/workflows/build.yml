@@ -212,4 +212,23 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release/*
-          generate_release_notes: true   # 自动根据提交生成 Release 说明
+          generate_release_notes: true   # 自动根据提交生成 changelog（追加在下方下载指引之后）
+          body: |
+            ## 📦 下载哪个版本？/ Which file should I download?
+
+            | 你的设备 / Your device | 下载文件 / File |
+            |---|---|
+            | **Windows**（推荐：安装版） | `PassPro-Setup.exe` |
+            | Windows（免安装绿色版，解压即用） | `PassPro-Windows.zip` |
+            | **Mac** · Apple 芯片（M1/M2/M3/M4…） | `PassPro-macOS-arm64.zip` |
+            | **Mac** · Intel 芯片 | `PassPro-macOS-x64.zip` |
+            | **Android** 手机/平板（2017 年后机型，绝大多数） | `PassPro-Android-arm64.apk` |
+            | Android 32 位老旧机型 | `PassPro-Android-armeabi-v7a.apk` |
+            | Android 模拟器 / x86 设备 | `PassPro-Android-x64.apk` |
+            | **Linux** x64 桌面 | `PassPro-Linux-x64.zip` |
+            | iOS（未签名，需自备 Apple 开发者证书签名后侧载） | `PassPro-iOS-unsigned.zip` |
+
+            > **不确定 Mac 是哪种芯片？** 点左上角苹果菜单 →「关于本机」，看「芯片 / 处理器」：显示 **Apple M…** 选 arm64，显示 **Intel** 选 x64。
+            > **Mac 提示「已损坏 / 无法验证开发者」**（App 为 adhoc 签名）：拖进「应用程序」后，终端执行 `xattr -dr com.apple.quarantine /Applications/PassPro.app`，再打开即可。
+            > **Windows 弹 SmartScreen**：点「更多信息」→「仍要运行」。
+            > **Android 提示未知来源**：在系统设置中允许安装后重试。

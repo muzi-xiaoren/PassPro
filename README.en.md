@@ -31,7 +31,7 @@ of each platform's *application support directory* (decided by `path_provider`'s
 
 | Platform | Actual path |
 |---|---|
-| macOS | `~/Library/Containers/com.example.PassPro/Data/Library/Application Support/com.example.PassPro/PassPro/passwords.log` (the app is sandboxed, so it lives inside the container) |
+| macOS | `~/Library/Application Support/com.example.PassPro/PassPro/passwords.log` (the macOS sandbox is disabled, so it lives here; data from the old sandbox container is migrated automatically on first launch) |
 | Windows | `%APPDATA%\com.example\PassPro\PassPro\passwords.log` (i.e. `C:\Users\<you>\AppData\Roaming\com.example\PassPro\PassPro\passwords.log`) |
 | Linux | `~/.local/share/passpro/PassPro/passwords.log` (honors `XDG_DATA_HOME`) |
 | Android | app-private dir `…/files/PassPro/passwords.log` (e.g. `/data/data/com.example.PassPro/files/PassPro/`, needs root to access directly) |

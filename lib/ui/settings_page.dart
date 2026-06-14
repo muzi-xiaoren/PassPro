@@ -151,7 +151,7 @@ class _SectionHeader extends StatelessWidget {
 class _AboutSection extends StatelessWidget {
   const _AboutSection();
 
-  static const String _version = '1.0.1';
+  static const String _version = '1.0.2';
   static const String _author = 'muzi-xiaoren';
   static const String _repoUrl = 'https://github.com/muzi-xiaoren/PassPro';
   static const String _repoLabel = 'github.com/muzi-xiaoren/PassPro';

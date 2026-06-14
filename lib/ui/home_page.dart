@@ -230,17 +230,7 @@ class _SyncStatusBadge extends StatelessWidget {
     if (!context.mounted) return;
 
     // 阻塞式等待界面（推送/拉取/覆盖期间）
-    final nav = Navigator.of(context, rootNavigator: true);
-    unawaited(showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const PopScope(
-        canPop: false,
-        child: Center(child: CircularProgressIndicator()),
-      ),
-    ));
-
-    try {
+    await _runWithProgress(context, () async {
       switch (action) {
         case _SyncAction.pull:
           await sync.pullAndMerge();
@@ -251,9 +241,7 @@ class _SyncStatusBadge extends StatelessWidget {
         case _SyncAction.overwriteRemote:
           await sync.overwriteRemoteWithLocal();
       }
-    } finally {
-      nav.pop(); // 关闭等待框
-    }
+    });
     if (!context.mounted) return;
 
     // 结果以最终状态为准：error/offline 视为失败，其余为成功
@@ -1230,6 +1218,36 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
 
 // ===================== 同步提示工具 =====================
 
+/// 阻塞式执行一次同步操作：弹出不可关闭的等待条（CircularProgressIndicator），
+/// 操作结束后关闭。手动菜单、增删改前的拉取、增删改后的推送共用，行为一致。
+Future<void> _runWithProgress(
+    BuildContext context, Future<void> Function() task) async {
+  final nav = Navigator.of(context, rootNavigator: true);
+  unawaited(showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const PopScope(
+      canPop: false,
+      child: Center(child: CircularProgressIndicator()),
+    ),
+  ));
+  try {
+    await task();
+  } finally {
+    nav.pop(); // 关闭等待框
+  }
+}
+
+/// 在底部以 SnackBar 显示一次同步结果（成功 / 失败都显示）。
+void _showSyncResult(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  final st = context.read<AppState>().sync.status;
+  final failed = st.state == SyncState.error || st.state == SyncState.offline;
+  final text =
+      _syncStatusText(l10n, st) ?? (failed ? l10n.syncError : l10n.syncOk);
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+}
+
 /// 操作前提示。返回 false 表示用户取消整个操作。
 Future<bool> _maybePromptPull(BuildContext context) async {
   final app = context.read<AppState>();
@@ -1243,8 +1261,9 @@ Future<bool> _maybePromptPull(BuildContext context) async {
 
   final choice = await showPullPrompt(context);
   if (choice == PromptChoice.cancel) return false;
-  if (choice == PromptChoice.confirm) {
-    await app.sync.pullAndMerge();
+  if (choice == PromptChoice.confirm && context.mounted) {
+    // 拉取期间显示阻塞等待条，避免界面“假死”。
+    await _runWithProgress(context, () => app.sync.pullAndMerge());
   }
   return true;
 }
@@ -1254,12 +1273,16 @@ Future<void> _maybePromptPush(BuildContext context) async {
   if (!app.settings.cloudEnabled) return;
   if (!app.settings.promptAfterEdit) return;
   if (app.sessionSkip.skipAfter) {
-    // 静默推（fire-and-forget）
-    unawaited(app.sync.pushAll());
+    // 已选“会话内不再提示”：只是不再弹确认框，但推送结果（成功 / 失败）
+    // 仍在底部以 SnackBar 反馈，和确认推送一致。
+    await app.sync.pushAll();
+    if (context.mounted) _showSyncResult(context);
     return;
   }
   final choice = await showPushPrompt(context);
-  if (choice == PromptChoice.confirm) {
-    await app.sync.pushAll();
+  if (choice == PromptChoice.confirm && context.mounted) {
+    // 推送期间显示等待条；成功 / 失败都在底部以 SnackBar 反馈。
+    await _runWithProgress(context, () => app.sync.pushAll());
+    if (context.mounted) _showSyncResult(context);
   }
 }
