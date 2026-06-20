@@ -105,6 +105,43 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nothingToExport => 'Keine Einträge zum Exportieren';
 
   @override
+  String get sectionSearch => 'Suchregel';
+
+  @override
+  String get searchExact => 'Exakt';
+
+  @override
+  String get searchContains => 'Enthält';
+
+  @override
+  String get searchFuzzy => 'Unscharf';
+
+  @override
+  String get searchCustom => 'Benutzerdefiniert';
+
+  @override
+  String get searchExactDesc =>
+      'Nach „.“ trennen; bei exakter Website-Übereinstimmung nur diese zeigen';
+
+  @override
+  String get searchContainsDesc =>
+      'Nach „.“ trennen; alle passenden Einträge nach Relevanz zeigen';
+
+  @override
+  String get searchFuzzyDesc =>
+      'Jede Website anzeigen, die die Suchzeichenfolge enthält';
+
+  @override
+  String get searchCustomDesc =>
+      'Mit selbst gewähltem Trennzeichen aufteilen, dann suchen';
+
+  @override
+  String get searchDelimiterLabel => 'Trennzeichen';
+
+  @override
+  String get searchMatchTypeLabel => 'Übereinstimmungstyp';
+
+  @override
   String get settings => 'Einstellungen';
 
   @override

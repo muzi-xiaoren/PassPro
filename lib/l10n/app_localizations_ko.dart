@@ -101,6 +101,39 @@ class AppLocalizationsKo extends AppLocalizations {
   String get nothingToExport => '내보낼 레코드가 없습니다';
 
   @override
+  String get sectionSearch => '검색 규칙';
+
+  @override
+  String get searchExact => '정확히 일치';
+
+  @override
+  String get searchContains => '포함 일치';
+
+  @override
+  String get searchFuzzy => '유사 검색';
+
+  @override
+  String get searchCustom => '사용자 지정';
+
+  @override
+  String get searchExactDesc => '\".\"로 분리; 완전히 같은 사이트가 있으면 그것만 표시';
+
+  @override
+  String get searchContainsDesc => '\".\"로 분리; 관련 항목을 일치도순으로 모두 표시';
+
+  @override
+  String get searchFuzzyDesc => '쿼리 문자열을 포함하는 사이트를 모두 표시';
+
+  @override
+  String get searchCustomDesc => '지정한 구분자로 분리한 뒤 검색';
+
+  @override
+  String get searchDelimiterLabel => '구분자';
+
+  @override
+  String get searchMatchTypeLabel => '일치 방식';
+
+  @override
   String get settings => '설정';
 
   @override

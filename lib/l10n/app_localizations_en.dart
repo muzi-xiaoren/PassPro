@@ -104,6 +104,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nothingToExport => 'No records to export';
 
   @override
+  String get sectionSearch => 'Search rule';
+
+  @override
+  String get searchExact => 'Exact';
+
+  @override
+  String get searchContains => 'Contains';
+
+  @override
+  String get searchFuzzy => 'Fuzzy';
+
+  @override
+  String get searchCustom => 'Custom';
+
+  @override
+  String get searchExactDesc =>
+      'Split by \".\"; when a website matches exactly, show only those';
+
+  @override
+  String get searchContainsDesc =>
+      'Split by \".\"; show all related entries ranked by relevance';
+
+  @override
+  String get searchFuzzyDesc =>
+      'Show any website that contains the query string';
+
+  @override
+  String get searchCustomDesc => 'Split by a delimiter you set, then match';
+
+  @override
+  String get searchDelimiterLabel => 'Delimiter';
+
+  @override
+  String get searchMatchTypeLabel => 'Match type';
+
+  @override
   String get settings => 'Settings';
 
   @override

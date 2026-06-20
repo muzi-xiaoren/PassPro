@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12 (API 31) 及以上：云备份 (cloud-backup) 与换机直传 (device-transfer)。
+  两者都默认包含 app 全部文件（含 passwords.log 与后端配置），
+  仅排除 flutter_secure_storage 的加密 prefs（密钥在 Keystore，恢复后无法解密）。
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml"/>
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml"/>
+    </device-transfer>
+</data-extraction-rules>

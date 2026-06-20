@@ -99,6 +99,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nothingToExport => '没有可导出的记录';
 
   @override
+  String get sectionSearch => '搜索规则';
+
+  @override
+  String get searchExact => '精确匹配';
+
+  @override
+  String get searchContains => '包含匹配';
+
+  @override
+  String get searchFuzzy => '模糊匹配';
+
+  @override
+  String get searchCustom => '自定义';
+
+  @override
+  String get searchExactDesc => '按「.」分割；命中完全相同的网址时只显示它';
+
+  @override
+  String get searchContainsDesc => '按「.」分割；按匹配度显示所有相关条目';
+
+  @override
+  String get searchFuzzyDesc => '网址只要包含查询串就显示';
+
+  @override
+  String get searchCustomDesc => '用自定义分隔符拆分后再匹配';
+
+  @override
+  String get searchDelimiterLabel => '分隔符';
+
+  @override
+  String get searchMatchTypeLabel => '匹配方式';
+
+  @override
   String get settings => '设置';
 
   @override

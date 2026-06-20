@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
 import '../l10n/app_localizations.dart';
+import '../models/search_config.dart';
 import '../services/update_checker.dart';
 import '../settings/app_settings.dart';
 import '../sync/git_backend.dart';
@@ -52,6 +53,11 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
+
+          const Divider(),
+          // ============ 搜索规则 ============
+          _SectionHeader(l10n.sectionSearch),
+          const _SearchRuleSection(),
 
           const Divider(),
           // ============ 云同步 ============
@@ -319,6 +325,112 @@ class _SectionHeader extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
       ),
+    );
+  }
+}
+
+// ============ 搜索规则 ============
+
+class _SearchRuleSection extends StatefulWidget {
+  const _SearchRuleSection();
+
+  @override
+  State<_SearchRuleSection> createState() => _SearchRuleSectionState();
+}
+
+class _SearchRuleSectionState extends State<_SearchRuleSection> {
+  late final TextEditingController _delimiter;
+
+  @override
+  void initState() {
+    super.initState();
+    _delimiter = TextEditingController(
+      text: context.read<AppSettings>().searchCustomDelimiter,
+    );
+  }
+
+  @override
+  void dispose() {
+    _delimiter.dispose();
+    super.dispose();
+  }
+
+  String _modeName(AppLocalizations l10n, SearchMode m) => switch (m) {
+        SearchMode.exact => l10n.searchExact,
+        SearchMode.contains => l10n.searchContains,
+        SearchMode.fuzzy => l10n.searchFuzzy,
+        SearchMode.custom => l10n.searchCustom,
+      };
+
+  String _modeDesc(AppLocalizations l10n, SearchMode m) => switch (m) {
+        SearchMode.exact => l10n.searchExactDesc,
+        SearchMode.contains => l10n.searchContainsDesc,
+        SearchMode.fuzzy => l10n.searchFuzzyDesc,
+        SearchMode.custom => l10n.searchCustomDesc,
+      };
+
+  String _strategyName(AppLocalizations l10n, SearchStrategy s) => switch (s) {
+        SearchStrategy.exact => l10n.searchExact,
+        SearchStrategy.contains => l10n.searchContains,
+        SearchStrategy.fuzzy => l10n.searchFuzzy,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.watch<AppSettings>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final m in SearchMode.values)
+          ListTile(
+            dense: true,
+            leading: Icon(
+              settings.searchMode == m
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: settings.searchMode == m
+                  ? Theme.of(context).colorScheme.primary
+                  : null,
+            ),
+            title: Text(_modeName(l10n, m)),
+            subtitle: Text(_modeDesc(l10n, m)),
+            onTap: () => settings.setSearchMode(m),
+          ),
+        if (settings.searchMode == SearchMode.custom)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _delimiter,
+                    decoration: InputDecoration(
+                      labelText: l10n.searchDelimiterLabel,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onChanged: settings.setSearchCustomDelimiter,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                DropdownButton<SearchStrategy>(
+                  value: settings.searchCustomStrategy,
+                  onChanged: (s) {
+                    if (s != null) settings.setSearchCustomStrategy(s);
+                  },
+                  items: [
+                    for (final s in SearchStrategy.values)
+                      DropdownMenuItem(
+                        value: s,
+                        child: Text(_strategyName(l10n, s)),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

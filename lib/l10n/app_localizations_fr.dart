@@ -104,6 +104,43 @@ class AppLocalizationsFr extends AppLocalizations {
   String get nothingToExport => 'Aucun enregistrement à exporter';
 
   @override
+  String get sectionSearch => 'Règle de recherche';
+
+  @override
+  String get searchExact => 'Exacte';
+
+  @override
+  String get searchContains => 'Inclusion';
+
+  @override
+  String get searchFuzzy => 'Approximative';
+
+  @override
+  String get searchCustom => 'Personnalisée';
+
+  @override
+  String get searchExactDesc =>
+      'Découpe par « . » ; si un site correspond exactement, n\'afficher que lui';
+
+  @override
+  String get searchContainsDesc =>
+      'Découpe par « . » ; afficher toutes les entrées liées, classées par pertinence';
+
+  @override
+  String get searchFuzzyDesc =>
+      'Afficher tout site contenant la chaîne recherchée';
+
+  @override
+  String get searchCustomDesc =>
+      'Découper avec un séparateur défini, puis rechercher';
+
+  @override
+  String get searchDelimiterLabel => 'Séparateur';
+
+  @override
+  String get searchMatchTypeLabel => 'Type de correspondance';
+
+  @override
   String get settings => 'Paramètres';
 
   @override

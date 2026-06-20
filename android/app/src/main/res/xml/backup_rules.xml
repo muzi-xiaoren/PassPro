@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 (API 30) 及以下的全量备份内容。
+  默认包含 app 的所有文件（含 passwords.log 与后端配置 shared_prefs），
+  仅排除 flutter_secure_storage 的加密 prefs —— 其解密密钥存于 Android Keystore，
+  无法随备份迁移，恢复后也解不开，所以排除；PAT 在新机重新输入即可。
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml"/>
+</full-backup-content>

@@ -264,6 +264,72 @@ abstract class AppLocalizations {
   /// **'No records to export'**
   String get nothingToExport;
 
+  /// No description provided for @sectionSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search rule'**
+  String get sectionSearch;
+
+  /// No description provided for @searchExact.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact'**
+  String get searchExact;
+
+  /// No description provided for @searchContains.
+  ///
+  /// In en, this message translates to:
+  /// **'Contains'**
+  String get searchContains;
+
+  /// No description provided for @searchFuzzy.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuzzy'**
+  String get searchFuzzy;
+
+  /// No description provided for @searchCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get searchCustom;
+
+  /// No description provided for @searchExactDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Split by \".\"; when a website matches exactly, show only those'**
+  String get searchExactDesc;
+
+  /// No description provided for @searchContainsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Split by \".\"; show all related entries ranked by relevance'**
+  String get searchContainsDesc;
+
+  /// No description provided for @searchFuzzyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Show any website that contains the query string'**
+  String get searchFuzzyDesc;
+
+  /// No description provided for @searchCustomDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Split by a delimiter you set, then match'**
+  String get searchCustomDesc;
+
+  /// No description provided for @searchDelimiterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delimiter'**
+  String get searchDelimiterLabel;
+
+  /// No description provided for @searchMatchTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Match type'**
+  String get searchMatchTypeLabel;
+
   /// No description provided for @settings.
   ///
   /// In en, this message translates to:

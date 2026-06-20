@@ -5,6 +5,8 @@ import 'dart:ui' show Locale;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/search_config.dart';
+
 enum BackendKind { github, gitee, webdav }
 
 enum BackendRole { primary, mirror }
@@ -98,6 +100,9 @@ class AppSettings extends ChangeNotifier {
   static const _kListSort = 'list_sort';
   static const _kMasterKeyVisible = 'master_key_visible';
   static const _kWindowFrame = 'window_frame';
+  static const _kSearchMode = 'search_mode';
+  static const _kSearchCustomDelimiter = 'search_custom_delimiter';
+  static const _kSearchCustomStrategy = 'search_custom_strategy';
 
   final SharedPreferences _prefs;
 
@@ -123,6 +128,29 @@ class AppSettings extends ChangeNotifier {
   /// 主密钥输入框是否默认明文可见（持久化）。默认 false（隐藏）。
   /// 解锁页与“更换密钥”弹窗共用此偏好。
   bool get masterKeyVisible => _prefs.getBool(_kMasterKeyVisible) ?? false;
+
+  /// 搜索模式（持久化）。默认精确匹配（与旧行为一致）。
+  SearchMode get searchMode => SearchMode.values.firstWhere(
+        (e) => e.name == _prefs.getString(_kSearchMode),
+        orElse: () => SearchMode.exact,
+      );
+
+  /// 自定义模式的分隔符（持久化），默认 `.`。
+  String get searchCustomDelimiter =>
+      _prefs.getString(_kSearchCustomDelimiter) ?? '.';
+
+  /// 自定义模式的子策略（持久化），默认模糊。
+  SearchStrategy get searchCustomStrategy => SearchStrategy.values.firstWhere(
+        (e) => e.name == _prefs.getString(_kSearchCustomStrategy),
+        orElse: () => SearchStrategy.fuzzy,
+      );
+
+  /// 当前生效的搜索配置，供查询界面使用。
+  SearchConfig get searchConfig => SearchConfig(
+        mode: searchMode,
+        customDelimiter: searchCustomDelimiter,
+        customStrategy: searchCustomStrategy,
+      );
 
   /// 上次关闭时的桌面窗口位置/大小：[left, top, width, height]。
   /// 无记录（首次启动）返回 null —— 此时由调用方居中并用默认尺寸。
@@ -218,6 +246,21 @@ class AppSettings extends ChangeNotifier {
   /// 无需触发全局重建，故不调用 notifyListeners。
   Future<void> setMasterKeyVisible(bool v) async {
     await _prefs.setBool(_kMasterKeyVisible, v);
+  }
+
+  Future<void> setSearchMode(SearchMode mode) async {
+    await _prefs.setString(_kSearchMode, mode.name);
+    notifyListeners();
+  }
+
+  Future<void> setSearchCustomDelimiter(String delimiter) async {
+    await _prefs.setString(_kSearchCustomDelimiter, delimiter);
+    notifyListeners();
+  }
+
+  Future<void> setSearchCustomStrategy(SearchStrategy strategy) async {
+    await _prefs.setString(_kSearchCustomStrategy, strategy.name);
+    notifyListeners();
   }
 
   /// 设置界面语言；传空字符串表示跟随系统。

@@ -465,7 +465,7 @@ class _QueryTabState extends State<_QueryTab> {
   void _doQuery() {
     final app = context.read<AppState>();
     final l10n = AppLocalizations.of(context)!;
-    final r = app.vault.query(_ctrl.text.trim(), app.masterKey);
+    final r = app.vault.query(_ctrl.text.trim(), app.masterKey, app.settings.searchConfig);
     setState(() {
       _result = r;
       _emptyMessage = r.invalidKey
@@ -925,6 +925,8 @@ class _AddTabState extends State<_AddTab> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _website,
+                    minLines: 1,
+                    maxLines: null,
                     decoration: InputDecoration(
                       labelText: l10n.websiteRequired,
                       prefixIcon: const Icon(Icons.link),
@@ -934,6 +936,8 @@ class _AddTabState extends State<_AddTab> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _username,
+                    minLines: 1,
+                    maxLines: null,
                     decoration: InputDecoration(
                       labelText: l10n.usernameOptional,
                       prefixIcon: const Icon(Icons.person_outline),
@@ -943,6 +947,8 @@ class _AddTabState extends State<_AddTab> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _password,
+                    minLines: 1,
+                    maxLines: null,
                     decoration: InputDecoration(
                       labelText: l10n.passwordRequired,
                       prefixIcon: const Icon(Icons.key_outlined),
@@ -1267,13 +1273,15 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
               controller: _website,
+              minLines: 1,
+              maxLines: null,
               decoration: InputDecoration(
                 labelText: l10n.website,
                 prefixIcon: const Icon(Icons.link),
@@ -1283,6 +1291,8 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
             const SizedBox(height: 12),
             TextField(
               controller: _username,
+              minLines: 1,
+              maxLines: null,
               decoration: InputDecoration(
                 labelText: l10n.username,
                 prefixIcon: const Icon(Icons.person_outline),
@@ -1293,6 +1303,8 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
             TextField(
               controller: _password,
               obscureText: !_showPw,
+              // 显示时随长密码自动换行变高；隐藏(obscure)态必须单行。
+              maxLines: _showPw ? null : 1,
               decoration: InputDecoration(
                 labelText: l10n.password,
                 prefixIcon: const Icon(Icons.key_outlined),

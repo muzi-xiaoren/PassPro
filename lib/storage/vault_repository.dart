@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import '../crypto/fernet_crypto.dart';
 import '../models/password_entry.dart';
+import '../models/search_config.dart';
 import 'conflict_merger.dart';
 import 'csv_codec.dart';
 import 'log_store.dart';
@@ -134,18 +135,9 @@ class VaultRepository {
 
   /// 查询（关键词拆分匹配 + 解密）。返回的 [PasswordEntry] 已带明文 password。
   /// 若主密钥错误，对应记录会被跳过；若全部跳过则返回空列表。
-  QueryResult query(String website, Uint8List masterKey) {
-    var hits = index.searchByWebsite(website);
+  QueryResult query(String website, Uint8List masterKey, SearchConfig config) {
+    final hits = index.search(website, config);
     if (hits.isEmpty) return const QueryResult.empty();
-    // 完全匹配优先：若存在与查询串完全相同的网址（忽略大小写与首尾空格），
-    // 则只保留完全匹配项，不再展示其他模糊命中的记录。
-    final q = website.trim().toLowerCase();
-    if (q.isNotEmpty) {
-      final exact = hits
-          .where((r) => (r.website ?? '').trim().toLowerCase() == q)
-          .toList(growable: false);
-      if (exact.isNotEmpty) hits = exact;
-    }
     final entries = <PasswordEntry>[];
     var invalidKeySeen = false;
     for (final r in hits) {

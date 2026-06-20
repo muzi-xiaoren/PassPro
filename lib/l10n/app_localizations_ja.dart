@@ -100,6 +100,39 @@ class AppLocalizationsJa extends AppLocalizations {
   String get nothingToExport => '書き出せるレコードがありません';
 
   @override
+  String get sectionSearch => '検索ルール';
+
+  @override
+  String get searchExact => '完全一致';
+
+  @override
+  String get searchContains => '部分一致';
+
+  @override
+  String get searchFuzzy => 'あいまい';
+
+  @override
+  String get searchCustom => 'カスタム';
+
+  @override
+  String get searchExactDesc => '「.」で分割。完全一致するサイトがあればそれだけ表示';
+
+  @override
+  String get searchContainsDesc => '「.」で分割。関連する項目を一致度順にすべて表示';
+
+  @override
+  String get searchFuzzyDesc => 'クエリ文字列を含むサイトをすべて表示';
+
+  @override
+  String get searchCustomDesc => '指定した区切り文字で分割してから一致';
+
+  @override
+  String get searchDelimiterLabel => '区切り文字';
+
+  @override
+  String get searchMatchTypeLabel => '一致方式';
+
+  @override
   String get settings => '設定';
 
   @override

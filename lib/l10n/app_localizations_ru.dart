@@ -104,6 +104,43 @@ class AppLocalizationsRu extends AppLocalizations {
   String get nothingToExport => 'Нет записей для экспорта';
 
   @override
+  String get sectionSearch => 'Правило поиска';
+
+  @override
+  String get searchExact => 'Точное';
+
+  @override
+  String get searchContains => 'Вхождение';
+
+  @override
+  String get searchFuzzy => 'Нечёткое';
+
+  @override
+  String get searchCustom => 'Своё';
+
+  @override
+  String get searchExactDesc =>
+      'Разделять по «.»; при точном совпадении сайта показывать только его';
+
+  @override
+  String get searchContainsDesc =>
+      'Разделять по «.»; показывать все подходящие записи по релевантности';
+
+  @override
+  String get searchFuzzyDesc =>
+      'Показывать любой сайт, содержащий строку запроса';
+
+  @override
+  String get searchCustomDesc =>
+      'Разделить по своему разделителю, затем искать';
+
+  @override
+  String get searchDelimiterLabel => 'Разделитель';
+
+  @override
+  String get searchMatchTypeLabel => 'Тип совпадения';
+
+  @override
   String get settings => 'Настройки';
 
   @override
