@@ -19,7 +19,90 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get masterKeyHint =>
-      'Der Hauptschlüssel wird nie gespeichert; du musst ihn bei jedem Start erneut eingeben.\nLeer lassen, um ein einzelnes Leerzeichen als Schlüssel zu verwenden (kompatibel mit der alten Version).';
+      'Der Hauptschlüssel wird nie gespeichert; du musst ihn bei jedem Start erneut eingeben.\nLeer lassen, um ein einzelnes Leerzeichen als Schlüssel zu verwenden.';
+
+  @override
+  String get checkUpdate => 'Nach Updates suchen';
+
+  @override
+  String get checkingUpdate => 'Suche nach Updates…';
+
+  @override
+  String updateUpToDate(String version) {
+    return 'Du hast die neueste Version ($version)';
+  }
+
+  @override
+  String updateAvailable(String version) {
+    return 'Neue Version $version verfügbar — zum Herunterladen tippen';
+  }
+
+  @override
+  String get updateCheckFailed => 'Update-Suche fehlgeschlagen';
+
+  @override
+  String get websiteCopied => 'Website kopiert';
+
+  @override
+  String get sectionBackup => 'Lokale Sicherung';
+
+  @override
+  String get exportBackup => 'Verschlüsselte Sicherung exportieren (.log)';
+
+  @override
+  String get exportBackupSub =>
+      'Passwörter bleiben verschlüsselt; auf einem anderen Gerät mit demselben Hauptschlüssel importieren';
+
+  @override
+  String get importBackup => 'Verschlüsselte Sicherung importieren (.log)';
+
+  @override
+  String get importBackupSub =>
+      'Wird datensatzweise in den aktuellen Tresor zusammengeführt — nichts geht verloren';
+
+  @override
+  String get exportCsvTitle => 'Als Klartext-CSV exportieren';
+
+  @override
+  String get exportCsvSub =>
+      'Website / Benutzername / Passwort im Klartext — Leck-Risiko';
+
+  @override
+  String get importCsvTitle => 'Aus CSV importieren';
+
+  @override
+  String get importCsvSub =>
+      'Liest die Spalten Website, Benutzername, Passwort';
+
+  @override
+  String get exportCsvWarnTitle => 'Passwörter im Klartext exportieren?';
+
+  @override
+  String get exportCsvWarnBody =>
+      'Die Passwörter in der CSV-Datei sind im Klartext und für jeden lesbar. Fortfahren?';
+
+  @override
+  String exportDone(int count) {
+    return '$count Einträge exportiert';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return 'Export fehlgeschlagen: $error';
+  }
+
+  @override
+  String importDone(int added, int total) {
+    return 'Import abgeschlossen: $added hinzugefügt, $total insgesamt';
+  }
+
+  @override
+  String importFailed(String error) {
+    return 'Import fehlgeschlagen: $error';
+  }
+
+  @override
+  String get nothingToExport => 'Keine Einträge zum Exportieren';
 
   @override
   String get settings => 'Einstellungen';

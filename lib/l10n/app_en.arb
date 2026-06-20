@@ -3,7 +3,47 @@
   "enterMasterKey": "Enter the master key",
   "masterKeyLabel": "Master Key",
   "unlock": "Unlock",
-  "masterKeyHint": "The master key is never saved; you must re-enter it on every launch.\nLeave it empty to use a single space as the key (compatible with the old version).",
+  "masterKeyHint": "The master key is never saved; you must re-enter it on every launch.\nLeave it empty to use a single space as the key.",
+  "checkUpdate": "Check for updates",
+  "checkingUpdate": "Checking for updates…",
+  "updateUpToDate": "You're on the latest version ({version})",
+  "@updateUpToDate": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "updateAvailable": "New version {version} available — tap to download",
+  "@updateAvailable": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "updateCheckFailed": "Update check failed",
+  "websiteCopied": "Website copied",
+  "sectionBackup": "Local backup",
+  "exportBackup": "Export encrypted backup (.log)",
+  "exportBackupSub": "Passwords stay encrypted; re-import on another device with the same master key",
+  "importBackup": "Import encrypted backup (.log)",
+  "importBackupSub": "Merged into the current vault by record — nothing is lost",
+  "exportCsvTitle": "Export plaintext CSV",
+  "exportCsvSub": "Website / username / password in cleartext — leak risk",
+  "importCsvTitle": "Import from CSV",
+  "importCsvSub": "Reads website, username, password columns",
+  "exportCsvWarnTitle": "Export plaintext passwords?",
+  "exportCsvWarnBody": "Passwords in the CSV file are stored in cleartext and anyone can read them. Continue?",
+  "exportDone": "Exported {count} records",
+  "@exportDone": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "exportFailed": "Export failed: {error}",
+  "@exportFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "importDone": "Import complete: {added} added, {total} total",
+  "@importDone": {
+    "placeholders": { "added": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "importFailed": "Import failed: {error}",
+  "@importFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "nothingToExport": "No records to export",
   "settings": "Settings",
   "lock": "Lock",
   "tabQuery": "Search",

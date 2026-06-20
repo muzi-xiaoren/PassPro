@@ -18,7 +18,85 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unlock => '解锁';
 
   @override
-  String get masterKeyHint => '主密钥不会被保存，每次启动需要重新输入。\n留空将以单空格作为主密钥（与旧版兼容）。';
+  String get masterKeyHint => '主密钥不会被保存，每次启动需要重新输入。\n留空将以单空格作为主密钥。';
+
+  @override
+  String get checkUpdate => '检查更新';
+
+  @override
+  String get checkingUpdate => '正在检查更新…';
+
+  @override
+  String updateUpToDate(String version) {
+    return '已是最新版本（$version）';
+  }
+
+  @override
+  String updateAvailable(String version) {
+    return '发现新版本 $version，点此前往下载';
+  }
+
+  @override
+  String get updateCheckFailed => '检查更新失败';
+
+  @override
+  String get websiteCopied => '网站已复制';
+
+  @override
+  String get sectionBackup => '本地备份';
+
+  @override
+  String get exportBackup => '导出加密备份（.log）';
+
+  @override
+  String get exportBackupSub => '密码保持加密，可在其它设备用相同主密钥导入';
+
+  @override
+  String get importBackup => '导入加密备份（.log）';
+
+  @override
+  String get importBackupSub => '按记录合并进当前库，不会丢失已有数据';
+
+  @override
+  String get exportCsvTitle => '导出明文 CSV';
+
+  @override
+  String get exportCsvSub => '网站 / 账号 / 密码 以明文导出，注意泄露风险';
+
+  @override
+  String get importCsvTitle => '从 CSV 导入';
+
+  @override
+  String get importCsvSub => '按 网站, 账号, 密码 三列读取';
+
+  @override
+  String get exportCsvWarnTitle => '导出明文密码？';
+
+  @override
+  String get exportCsvWarnBody => 'CSV 文件中的密码为明文，任何人都能看到。确定导出吗？';
+
+  @override
+  String exportDone(int count) {
+    return '已导出 $count 条';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return '导出失败：$error';
+  }
+
+  @override
+  String importDone(int added, int total) {
+    return '导入完成：新增 $added 条，共 $total 条';
+  }
+
+  @override
+  String importFailed(String error) {
+    return '导入失败：$error';
+  }
+
+  @override
+  String get nothingToExport => '没有可导出的记录';
 
   @override
   String get settings => '设置';

@@ -129,8 +129,140 @@ abstract class AppLocalizations {
   /// No description provided for @masterKeyHint.
   ///
   /// In en, this message translates to:
-  /// **'The master key is never saved; you must re-enter it on every launch.\nLeave it empty to use a single space as the key (compatible with the old version).'**
+  /// **'The master key is never saved; you must re-enter it on every launch.\nLeave it empty to use a single space as the key.'**
   String get masterKeyHint;
+
+  /// No description provided for @checkUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get checkUpdate;
+
+  /// No description provided for @checkingUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for updates…'**
+  String get checkingUpdate;
+
+  /// No description provided for @updateUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re on the latest version ({version})'**
+  String updateUpToDate(String version);
+
+  /// No description provided for @updateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'New version {version} available — tap to download'**
+  String updateAvailable(String version);
+
+  /// No description provided for @updateCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Update check failed'**
+  String get updateCheckFailed;
+
+  /// No description provided for @websiteCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Website copied'**
+  String get websiteCopied;
+
+  /// No description provided for @sectionBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Local backup'**
+  String get sectionBackup;
+
+  /// No description provided for @exportBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Export encrypted backup (.log)'**
+  String get exportBackup;
+
+  /// No description provided for @exportBackupSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords stay encrypted; re-import on another device with the same master key'**
+  String get exportBackupSub;
+
+  /// No description provided for @importBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Import encrypted backup (.log)'**
+  String get importBackup;
+
+  /// No description provided for @importBackupSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Merged into the current vault by record — nothing is lost'**
+  String get importBackupSub;
+
+  /// No description provided for @exportCsvTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export plaintext CSV'**
+  String get exportCsvTitle;
+
+  /// No description provided for @exportCsvSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Website / username / password in cleartext — leak risk'**
+  String get exportCsvSub;
+
+  /// No description provided for @importCsvTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from CSV'**
+  String get importCsvTitle;
+
+  /// No description provided for @importCsvSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Reads website, username, password columns'**
+  String get importCsvSub;
+
+  /// No description provided for @exportCsvWarnTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export plaintext passwords?'**
+  String get exportCsvWarnTitle;
+
+  /// No description provided for @exportCsvWarnBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords in the CSV file are stored in cleartext and anyone can read them. Continue?'**
+  String get exportCsvWarnBody;
+
+  /// No description provided for @exportDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Exported {count} records'**
+  String exportDone(int count);
+
+  /// No description provided for @exportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed: {error}'**
+  String exportFailed(String error);
+
+  /// No description provided for @importDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Import complete: {added} added, {total} total'**
+  String importDone(int added, int total);
+
+  /// No description provided for @importFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed: {error}'**
+  String importFailed(String error);
+
+  /// No description provided for @nothingToExport.
+  ///
+  /// In en, this message translates to:
+  /// **'No records to export'**
+  String get nothingToExport;
 
   /// No description provided for @settings.
   ///

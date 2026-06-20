@@ -19,7 +19,89 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get masterKeyHint =>
-      'The master key is never saved; you must re-enter it on every launch.\nLeave it empty to use a single space as the key (compatible with the old version).';
+      'The master key is never saved; you must re-enter it on every launch.\nLeave it empty to use a single space as the key.';
+
+  @override
+  String get checkUpdate => 'Check for updates';
+
+  @override
+  String get checkingUpdate => 'Checking for updates…';
+
+  @override
+  String updateUpToDate(String version) {
+    return 'You\'re on the latest version ($version)';
+  }
+
+  @override
+  String updateAvailable(String version) {
+    return 'New version $version available — tap to download';
+  }
+
+  @override
+  String get updateCheckFailed => 'Update check failed';
+
+  @override
+  String get websiteCopied => 'Website copied';
+
+  @override
+  String get sectionBackup => 'Local backup';
+
+  @override
+  String get exportBackup => 'Export encrypted backup (.log)';
+
+  @override
+  String get exportBackupSub =>
+      'Passwords stay encrypted; re-import on another device with the same master key';
+
+  @override
+  String get importBackup => 'Import encrypted backup (.log)';
+
+  @override
+  String get importBackupSub =>
+      'Merged into the current vault by record — nothing is lost';
+
+  @override
+  String get exportCsvTitle => 'Export plaintext CSV';
+
+  @override
+  String get exportCsvSub =>
+      'Website / username / password in cleartext — leak risk';
+
+  @override
+  String get importCsvTitle => 'Import from CSV';
+
+  @override
+  String get importCsvSub => 'Reads website, username, password columns';
+
+  @override
+  String get exportCsvWarnTitle => 'Export plaintext passwords?';
+
+  @override
+  String get exportCsvWarnBody =>
+      'Passwords in the CSV file are stored in cleartext and anyone can read them. Continue?';
+
+  @override
+  String exportDone(int count) {
+    return 'Exported $count records';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return 'Export failed: $error';
+  }
+
+  @override
+  String importDone(int added, int total) {
+    return 'Import complete: $added added, $total total';
+  }
+
+  @override
+  String importFailed(String error) {
+    return 'Import failed: $error';
+  }
+
+  @override
+  String get nothingToExport => 'No records to export';
 
   @override
   String get settings => 'Settings';

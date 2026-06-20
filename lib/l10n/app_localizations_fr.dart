@@ -19,7 +19,89 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get masterKeyHint =>
-      'La clé maître n\'est jamais enregistrée ; vous devez la ressaisir à chaque lancement.\nLaissez le champ vide pour utiliser une espace simple comme clé (compatible avec l\'ancienne version).';
+      'La clé maître n\'est jamais enregistrée ; vous devez la ressaisir à chaque lancement.\nLaissez le champ vide pour utiliser une espace simple comme clé.';
+
+  @override
+  String get checkUpdate => 'Rechercher des mises à jour';
+
+  @override
+  String get checkingUpdate => 'Recherche de mises à jour…';
+
+  @override
+  String updateUpToDate(String version) {
+    return 'Vous avez la dernière version ($version)';
+  }
+
+  @override
+  String updateAvailable(String version) {
+    return 'Nouvelle version $version disponible — appuyez pour télécharger';
+  }
+
+  @override
+  String get updateCheckFailed => 'Échec de la recherche de mise à jour';
+
+  @override
+  String get websiteCopied => 'Site copié';
+
+  @override
+  String get sectionBackup => 'Sauvegarde locale';
+
+  @override
+  String get exportBackup => 'Exporter la sauvegarde chiffrée (.log)';
+
+  @override
+  String get exportBackupSub =>
+      'Les mots de passe restent chiffrés ; réimportez-les sur un autre appareil avec la même clé maître';
+
+  @override
+  String get importBackup => 'Importer une sauvegarde chiffrée (.log)';
+
+  @override
+  String get importBackupSub =>
+      'Fusionnée dans le coffre actuel par enregistrement — rien n\'est perdu';
+
+  @override
+  String get exportCsvTitle => 'Exporter en CSV (texte clair)';
+
+  @override
+  String get exportCsvSub =>
+      'Site / identifiant / mot de passe en clair — risque de fuite';
+
+  @override
+  String get importCsvTitle => 'Importer depuis un CSV';
+
+  @override
+  String get importCsvSub => 'Lit les colonnes site, identifiant, mot de passe';
+
+  @override
+  String get exportCsvWarnTitle => 'Exporter les mots de passe en clair ?';
+
+  @override
+  String get exportCsvWarnBody =>
+      'Les mots de passe du fichier CSV sont en clair et lisibles par tous. Continuer ?';
+
+  @override
+  String exportDone(int count) {
+    return '$count enregistrements exportés';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return 'Échec de l\'export : $error';
+  }
+
+  @override
+  String importDone(int added, int total) {
+    return 'Import terminé : $added ajoutés, $total au total';
+  }
+
+  @override
+  String importFailed(String error) {
+    return 'Échec de l\'import : $error';
+  }
+
+  @override
+  String get nothingToExport => 'Aucun enregistrement à exporter';
 
   @override
   String get settings => 'Paramètres';

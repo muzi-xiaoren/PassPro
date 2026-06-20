@@ -19,7 +19,86 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get masterKeyHint =>
-      '마스터 키는 저장되지 않으며 실행할 때마다 다시 입력해야 합니다.\n비워 두면 공백 한 칸을 키로 사용합니다(구버전과 호환).';
+      '마스터 키는 저장되지 않으며 실행할 때마다 다시 입력해야 합니다.\n비워 두면 공백 한 칸을 키로 사용합니다.';
+
+  @override
+  String get checkUpdate => '업데이트 확인';
+
+  @override
+  String get checkingUpdate => '업데이트 확인 중…';
+
+  @override
+  String updateUpToDate(String version) {
+    return '최신 버전입니다 ($version)';
+  }
+
+  @override
+  String updateAvailable(String version) {
+    return '새 버전 $version 사용 가능 — 눌러서 다운로드';
+  }
+
+  @override
+  String get updateCheckFailed => '업데이트 확인 실패';
+
+  @override
+  String get websiteCopied => '사이트 주소 복사됨';
+
+  @override
+  String get sectionBackup => '로컬 백업';
+
+  @override
+  String get exportBackup => '암호화 백업 내보내기 (.log)';
+
+  @override
+  String get exportBackupSub =>
+      '비밀번호는 암호화된 상태로 유지되며, 같은 마스터 키로 다른 기기에서 가져올 수 있습니다';
+
+  @override
+  String get importBackup => '암호화 백업 가져오기 (.log)';
+
+  @override
+  String get importBackupSub => '현재 보관함에 레코드 단위로 병합되며 데이터가 사라지지 않습니다';
+
+  @override
+  String get exportCsvTitle => '평문 CSV 내보내기';
+
+  @override
+  String get exportCsvSub => '사이트 / 아이디 / 비밀번호를 평문으로 내보냄 — 유출 주의';
+
+  @override
+  String get importCsvTitle => 'CSV에서 가져오기';
+
+  @override
+  String get importCsvSub => '사이트, 아이디, 비밀번호 3개 열을 읽습니다';
+
+  @override
+  String get exportCsvWarnTitle => '평문 비밀번호를 내보낼까요?';
+
+  @override
+  String get exportCsvWarnBody => 'CSV 파일의 비밀번호는 평문이라 누구나 읽을 수 있습니다. 계속할까요?';
+
+  @override
+  String exportDone(int count) {
+    return '$count개 내보냄';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return '내보내기 실패: $error';
+  }
+
+  @override
+  String importDone(int added, int total) {
+    return '가져오기 완료: $added개 추가, 총 $total개';
+  }
+
+  @override
+  String importFailed(String error) {
+    return '가져오기 실패: $error';
+  }
+
+  @override
+  String get nothingToExport => '내보낼 레코드가 없습니다';
 
   @override
   String get settings => '설정';

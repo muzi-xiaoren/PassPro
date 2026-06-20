@@ -1,13 +1,22 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
 import '../l10n/app_localizations.dart';
+import '../services/update_checker.dart';
 import '../settings/app_settings.dart';
 import '../sync/git_backend.dart';
 import '../sync/sync_backend.dart';
 import '../sync/webdav_backend.dart';
+
+/// 应用版本号（关于页展示 + 检查更新比较的基准）。发版时同步改 pubspec.yaml。
+const String kAppVersion = '1.0.3';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -89,7 +98,36 @@ class SettingsPage extends StatelessWidget {
           ),
 
           const Divider(),
+          // ============ 本地备份（导入 / 导出） ============
+          _SectionHeader(l10n.sectionBackup),
+          ListTile(
+            leading: const Icon(Icons.upload_file_outlined),
+            title: Text(l10n.exportBackup),
+            subtitle: Text(l10n.exportBackupSub),
+            onTap: () => _exportLog(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: Text(l10n.importBackup),
+            subtitle: Text(l10n.importBackupSub),
+            onTap: () => _importLog(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.table_view_outlined),
+            title: Text(l10n.exportCsvTitle),
+            subtitle: Text(l10n.exportCsvSub),
+            onTap: () => _exportCsv(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.file_open_outlined),
+            title: Text(l10n.importCsvTitle),
+            subtitle: Text(l10n.importCsvSub),
+            onTap: () => _importCsv(context),
+          ),
+
+          const Divider(),
           _SectionHeader(l10n.sectionAbout),
+          const _CheckUpdateTile(),
           const _AboutSection(),
         ],
       ),
@@ -119,6 +157,145 @@ class SettingsPage extends StatelessWidget {
       await app.sync.pushAll(commitMessage: 'compact log');
     }
   }
+
+  // ============ 本地导入 / 导出 ============
+
+  /// 导出加密备份（原始 .log 文件，密码仍为密文）。
+  Future<void> _exportLog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final app = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final count = app.vault.index.activeCount;
+      if (count == 0) {
+        messenger.showSnackBar(SnackBar(content: Text(l10n.nothingToExport)));
+        return;
+      }
+      final data = Uint8List.fromList(await app.vault.exportLogBytes());
+      final saved =
+          await _saveBytes('PassPro-backup-${_stamp()}.log', data);
+      if (saved) {
+        messenger.showSnackBar(SnackBar(content: Text(l10n.exportDone(count))));
+      }
+    } catch (e) {
+      messenger
+          .showSnackBar(SnackBar(content: Text(l10n.exportFailed('$e'))));
+    }
+  }
+
+  /// 导入加密备份（.log），与现有库按记录合并。
+  Future<void> _importLog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final app = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final bytes = await _pickBytes();
+      if (bytes == null) return;
+      final r = await app.vault.importLogBytes(bytes);
+      messenger.showSnackBar(
+          SnackBar(content: Text(l10n.importDone(r.added, r.total))));
+    } catch (e) {
+      messenger
+          .showSnackBar(SnackBar(content: Text(l10n.importFailed('$e'))));
+    }
+  }
+
+  /// 导出明文 CSV（导出前二次确认，密码会以明文落盘）。
+  Future<void> _exportCsv(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final app = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.exportCsvWarnTitle),
+        content: Text(l10n.exportCsvWarnBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.continueLabel),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      final out = app.vault.exportCsv(app.masterKey);
+      if (out.count == 0) {
+        messenger.showSnackBar(SnackBar(content: Text(l10n.nothingToExport)));
+        return;
+      }
+      // 前置 UTF-8 BOM，方便 Excel 正确识别中文。
+      final data = Uint8List.fromList(utf8.encode('\u{FEFF}${out.csv}'));
+      final saved =
+          await _saveBytes('PassPro-export-${_stamp()}.csv', data);
+      if (saved) {
+        messenger
+            .showSnackBar(SnackBar(content: Text(l10n.exportDone(out.count))));
+      }
+    } catch (e) {
+      messenger
+          .showSnackBar(SnackBar(content: Text(l10n.exportFailed('$e'))));
+    }
+  }
+
+  /// 从明文 CSV 导入（按 网站,账号,密码 三列，逐条用当前主密钥加密入库）。
+  Future<void> _importCsv(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final app = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final bytes = await _pickBytes();
+      if (bytes == null) return;
+      var text = utf8.decode(bytes, allowMalformed: true);
+      if (text.startsWith('\u{FEFF}')) text = text.substring(1); // 去掉 BOM
+      final r = await app.vault.importCsv(text, app.masterKey);
+      messenger.showSnackBar(
+          SnackBar(content: Text(l10n.importDone(r.added, r.total))));
+    } catch (e) {
+      messenger
+          .showSnackBar(SnackBar(content: Text(l10n.importFailed('$e'))));
+    }
+  }
+
+  /// 弹系统文件选择框，读出所选文件字节；用户取消返回 null。
+  Future<Uint8List?> _pickBytes() async {
+    final res = await FilePicker.platform.pickFiles(withData: true);
+    if (res == null || res.files.isEmpty) return null;
+    final f = res.files.single;
+    if (f.bytes != null) return f.bytes;
+    final path = f.path;
+    if (path == null) return null;
+    return File(path).readAsBytes();
+  }
+
+  /// 弹系统保存框写出字节；移动端通过 file_picker 直接落盘，桌面端取路径自行写。
+  /// 用户取消返回 false。
+  Future<bool> _saveBytes(String fileName, Uint8List data) async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      final path =
+          await FilePicker.platform.saveFile(fileName: fileName, bytes: data);
+      return path != null;
+    }
+    final path = await FilePicker.platform.saveFile(fileName: fileName);
+    if (path == null) return false;
+    await File(path).writeAsBytes(data);
+    return true;
+  }
+
+  static String _stamp() {
+    final n = DateTime.now();
+    String two(int x) => x.toString().padLeft(2, '0');
+    return '${n.year}${two(n.month)}${two(n.day)}-'
+        '${two(n.hour)}${two(n.minute)}${two(n.second)}';
+  }
 }
 
 String _humanBytes(int n) {
@@ -146,12 +323,86 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+// ============ 检查更新 ============
+
+class _CheckUpdateTile extends StatefulWidget {
+  const _CheckUpdateTile();
+
+  @override
+  State<_CheckUpdateTile> createState() => _CheckUpdateTileState();
+}
+
+class _CheckUpdateTileState extends State<_CheckUpdateTile> {
+  bool _checking = false;
+
+  Future<void> _check() async {
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _checking = true);
+    try {
+      final info = await UpdateChecker.check(kAppVersion);
+      if (!mounted) return;
+      if (info.hasUpdate) {
+        final go = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.checkUpdate),
+            content: Text(l10n.updateAvailable(info.latestVersion)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton.icon(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                icon: const Icon(Icons.open_in_new, size: 18),
+                label: Text(l10n.continueLabel),
+              ),
+            ],
+          ),
+        );
+        if (go == true) {
+          await launchUrl(
+            Uri.parse(info.htmlUrl),
+            mode: LaunchMode.externalApplication,
+          );
+        }
+      } else {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.updateUpToDate(info.latestVersion))),
+        );
+      }
+    } catch (_) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.updateCheckFailed)));
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return ListTile(
+      leading: const Icon(Icons.system_update_alt),
+      title: Text(l10n.checkUpdate),
+      subtitle: _checking ? Text(l10n.checkingUpdate) : null,
+      trailing: _checking
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+      onTap: _checking ? null : _check,
+    );
+  }
+}
+
 // ============ 关于（两列布局 + 可点击跳转 GitHub） ============
 
 class _AboutSection extends StatelessWidget {
   const _AboutSection();
 
-  static const String _version = '1.0.2';
   static const String _author = 'muzi-xiaoren';
   static const String _repoUrl = 'https://github.com/muzi-xiaoren/PassPro';
   static const String _repoLabel = 'github.com/muzi-xiaoren/PassPro';
@@ -173,7 +424,8 @@ class _AboutSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _AboutRow(label: l10n.aboutVersionLabel, child: const Text(_version)),
+          _AboutRow(
+              label: l10n.aboutVersionLabel, child: const Text(kAppVersion)),
           const SizedBox(height: 8),
           _AboutRow(label: l10n.aboutAuthorLabel, child: const Text(_author)),
           const SizedBox(height: 8),
@@ -261,14 +513,37 @@ class _AboutRow extends StatelessWidget {
   }
 }
 
-class _CompactionSubtitle extends StatelessWidget {
+class _CompactionSubtitle extends StatefulWidget {
   const _CompactionSubtitle();
 
   @override
+  State<_CompactionSubtitle> createState() => _CompactionSubtitleState();
+}
+
+class _CompactionSubtitleState extends State<_CompactionSubtitle> {
+  late final _index = context.read<AppState>().vault.index;
+
+  @override
+  void initState() {
+    super.initState();
+    // 整理日志后索引会 replay 并通知，这里即时刷新“有效/总行数/放大率”。
+    _index.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    _index.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppState>();
     final l10n = AppLocalizations.of(context)!;
-    final ix = app.vault.index;
+    final ix = _index;
     final amp = ix.amplification.toStringAsFixed(2);
     return Text(l10n.compactionStatus(ix.activeCount, ix.totalLineCount, amp));
   }

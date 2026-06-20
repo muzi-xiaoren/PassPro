@@ -19,7 +19,89 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get masterKeyHint =>
-      'Мастер-ключ не сохраняется; его нужно вводить заново при каждом запуске.\nОставьте поле пустым, чтобы использовать один пробел в качестве ключа (совместимо со старой версией).';
+      'Мастер-ключ не сохраняется; его нужно вводить заново при каждом запуске.\nОставьте поле пустым, чтобы использовать один пробел в качестве ключа.';
+
+  @override
+  String get checkUpdate => 'Проверить обновления';
+
+  @override
+  String get checkingUpdate => 'Проверка обновлений…';
+
+  @override
+  String updateUpToDate(String version) {
+    return 'У вас последняя версия ($version)';
+  }
+
+  @override
+  String updateAvailable(String version) {
+    return 'Доступна новая версия $version — нажмите, чтобы скачать';
+  }
+
+  @override
+  String get updateCheckFailed => 'Не удалось проверить обновления';
+
+  @override
+  String get websiteCopied => 'Сайт скопирован';
+
+  @override
+  String get sectionBackup => 'Локальная резервная копия';
+
+  @override
+  String get exportBackup => 'Экспорт зашифрованной копии (.log)';
+
+  @override
+  String get exportBackupSub =>
+      'Пароли остаются зашифрованными; импортируйте на другом устройстве с тем же мастер-ключом';
+
+  @override
+  String get importBackup => 'Импорт зашифрованной копии (.log)';
+
+  @override
+  String get importBackupSub =>
+      'Объединяется с текущим хранилищем по записям — ничего не теряется';
+
+  @override
+  String get exportCsvTitle => 'Экспорт в CSV (открытый текст)';
+
+  @override
+  String get exportCsvSub =>
+      'Сайт / логин / пароль в открытом виде — риск утечки';
+
+  @override
+  String get importCsvTitle => 'Импорт из CSV';
+
+  @override
+  String get importCsvSub => 'Читает столбцы: сайт, логин, пароль';
+
+  @override
+  String get exportCsvWarnTitle => 'Экспортировать пароли в открытом виде?';
+
+  @override
+  String get exportCsvWarnBody =>
+      'Пароли в CSV-файле хранятся в открытом виде, их может прочитать любой. Продолжить?';
+
+  @override
+  String exportDone(int count) {
+    return 'Экспортировано записей: $count';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return 'Ошибка экспорта: $error';
+  }
+
+  @override
+  String importDone(int added, int total) {
+    return 'Импорт завершён: добавлено $added, всего $total';
+  }
+
+  @override
+  String importFailed(String error) {
+    return 'Ошибка импорта: $error';
+  }
+
+  @override
+  String get nothingToExport => 'Нет записей для экспорта';
 
   @override
   String get settings => 'Настройки';

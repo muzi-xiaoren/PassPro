@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import '../crypto/fernet_crypto.dart';
 import '../models/password_entry.dart';
+import 'conflict_merger.dart';
+import 'csv_codec.dart';
 import 'log_store.dart';
 import 'memory_index.dart';
 
@@ -165,6 +168,88 @@ class VaultRepository {
     return QueryResult.ok(entries);
   }
 
+  // ============ 本地导入 / 导出 ============
+
+  /// 当前加密日志文件的原始字节（用于"导出加密备份 .log"）。
+  Future<List<int>> exportLogBytes() => store.file.readAsBytes();
+
+  /// 导入一份 .log 备份字节：解析后与现有库按 record_id 合并（不丢数据），
+  /// 再原子重写并 replay。返回新增条数与合并后总条数。
+  /// 解析不出任何有效记录时抛 [FormatException]（多半是选错了文件）。
+  Future<ImportResult> importLogBytes(List<int> bytes) async {
+    final text = utf8.decode(bytes, allowMalformed: true);
+    final imported = <LogRecord>[];
+    for (final raw in const LineSplitter().convert(text)) {
+      final line = raw.trim();
+      if (line.isEmpty) continue;
+      try {
+        imported.add(LogRecord.fromLine(line));
+      } catch (_) {
+        // 跳过坏行
+      }
+    }
+    if (imported.isEmpty) {
+      throw const FormatException('文件中没有可识别的记录');
+    }
+    final beforeIds = index.activeRecords.map((r) => r.id).toSet();
+    final merged = mergeLogs(await store.readAll(), imported);
+    await store.replaceAll(merged);
+    index.replay(await store.readAll());
+    final afterIds = index.activeRecords.map((r) => r.id).toSet();
+    final added = afterIds.difference(beforeIds).length;
+    return ImportResult(added: added, total: afterIds.length);
+  }
+
+  /// 把当前库导成明文 CSV（首行表头）。无法用当前主密钥解出的记录会被跳过。
+  /// 返回 CSV 文本与实际导出的条数。
+  ({String csv, int count}) exportCsv(Uint8List masterKey) {
+    final rows = <List<String>>[
+      ['website', 'username', 'password'],
+    ];
+    for (final r in index.activeRecords) {
+      String pw;
+      try {
+        pw = index.decryptPassword(r, masterKey);
+      } on FernetException {
+        continue; // 当前主密钥解不出来的记录跳过
+      }
+      rows.add([r.website ?? '', r.username ?? '', pw]);
+    }
+    return (csv: encodeCsv(rows), count: rows.length - 1);
+  }
+
+  /// 从明文 CSV 导入：按 网站,账号,密码 三列读取，逐条用当前主密钥加密入库。
+  /// 自动跳过表头行与空行；与现有完全相同的条目（去重）不重复计数。
+  Future<ImportResult> importCsv(String text, Uint8List masterKey) async {
+    final rows = decodeCsv(text);
+    var added = 0;
+    var headerChecked = false;
+    for (final row in rows) {
+      if (row.every((c) => c.trim().isEmpty)) continue;
+      final website = row.isNotEmpty ? row[0].trim() : '';
+      final username = row.length > 1 ? row[1].trim() : '';
+      final password = row.length > 2 ? row[2] : '';
+      if (!headerChecked) {
+        headerChecked = true;
+        if (_looksLikeHeader(website)) continue;
+      }
+      if (website.isEmpty || password.isEmpty) continue;
+      final ok = await add(
+        website: website,
+        username: username,
+        plaintextPassword: password,
+        masterKey: masterKey,
+      );
+      if (ok) added++;
+    }
+    return ImportResult(added: added, total: index.activeCount);
+  }
+
+  static bool _looksLikeHeader(String first) {
+    const heads = {'website', 'url', 'site', '网站', '网址', 'address'};
+    return heads.contains(first.toLowerCase());
+  }
+
   static String _newId() {
     // 16 字节随机 + 时间戳前缀，足够单设备内唯一
     final ts = DateTime.now().toUtc().millisecondsSinceEpoch.toRadixString(36);
@@ -174,6 +259,13 @@ class VaultRepository {
 }
 
 enum DeleteOutcome { ok, notFound, invalidKey }
+
+/// 导入结果：本次新增的条数与合并/入库后的总条数。
+class ImportResult {
+  final int added;
+  final int total;
+  const ImportResult({required this.added, required this.total});
+}
 
 class QueryResult {
   final List<PasswordEntry> entries;

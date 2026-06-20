@@ -15,6 +15,10 @@ jobs:
   android:
     name: Android APKs
     runs-on: ubuntu-latest
+    env:
+      # 固定签名密钥（base64）。未配置该 Secret 时下面的签名步骤会被跳过，
+      # 构建回退到 debug 签名（指纹随机）。配置后所有版本同一指纹，更新无需卸载。
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
@@ -26,6 +30,20 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - name: Configure release signing (when keystore secret is set)
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          {
+            echo "storeFile=upload-keystore.jks"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+          } > android/key.properties
       - run: flutter build apk --release --split-per-abi
       - name: Rename Android APKs
         run: |

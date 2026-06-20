@@ -21,3 +21,9 @@ web/
 
 # 本地 secret
 *.local
+
+# Android 签名密钥（绝不入库；CI 从 GitHub Secrets 生成）
+android/key.properties
+**/*.jks
+**/*.keystore
+upload-keystore.jks

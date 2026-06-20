@@ -1,7 +1,7 @@
 name: passpro
 description: 跨平台本地密码管理器，兼容旧 Python Fernet 加密文件，支持 GitHub/Gitee 双仓库同步。
 publish_to: 'none'
-version: 1.0.2+15
+version: 1.0.3+16
 
 environment:
   sdk: ^3.4.0
@@ -36,6 +36,9 @@ dependencies:
 
   # 打开外部链接（"关于"页跳转 GitHub 仓库）
   url_launcher: ^6.3.2
+
+  # 导入/导出本地文件时的系统文件选择/保存对话框
+  file_picker: ^8.1.2
 
   # 多语言 (i18n)
   flutter_localizations:

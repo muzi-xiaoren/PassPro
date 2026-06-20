@@ -19,7 +19,85 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get masterKeyHint =>
-      'マスターキーは保存されず、起動のたびに再入力が必要です。\n空欄のままにすると半角スペース1文字をキーとして使用します（旧バージョンと互換）。';
+      'マスターキーは保存されず、起動のたびに再入力が必要です。\n空欄のままにすると半角スペース1文字をキーとして使用します。';
+
+  @override
+  String get checkUpdate => 'アップデートを確認';
+
+  @override
+  String get checkingUpdate => 'アップデートを確認中…';
+
+  @override
+  String updateUpToDate(String version) {
+    return '最新バージョンです（$version）';
+  }
+
+  @override
+  String updateAvailable(String version) {
+    return '新しいバージョン $version があります。タップしてダウンロード';
+  }
+
+  @override
+  String get updateCheckFailed => 'アップデートの確認に失敗しました';
+
+  @override
+  String get websiteCopied => 'サイトをコピーしました';
+
+  @override
+  String get sectionBackup => 'ローカルバックアップ';
+
+  @override
+  String get exportBackup => '暗号化バックアップを書き出し（.log）';
+
+  @override
+  String get exportBackupSub => 'パスワードは暗号化されたまま。同じマスターキーで他の端末に取り込めます';
+
+  @override
+  String get importBackup => '暗号化バックアップを読み込み（.log）';
+
+  @override
+  String get importBackupSub => '現在の保管庫にレコード単位で統合され、データは失われません';
+
+  @override
+  String get exportCsvTitle => '平文 CSV を書き出し';
+
+  @override
+  String get exportCsvSub => 'サイト / ユーザー名 / パスワードを平文で書き出し。漏えいに注意';
+
+  @override
+  String get importCsvTitle => 'CSV から取り込み';
+
+  @override
+  String get importCsvSub => 'サイト, ユーザー名, パスワード の3列を読み込みます';
+
+  @override
+  String get exportCsvWarnTitle => '平文パスワードを書き出しますか？';
+
+  @override
+  String get exportCsvWarnBody => 'CSV ファイル内のパスワードは平文で、誰でも読めます。続行しますか？';
+
+  @override
+  String exportDone(int count) {
+    return '$count 件を書き出しました';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return '書き出しに失敗：$error';
+  }
+
+  @override
+  String importDone(int added, int total) {
+    return '取り込み完了：新規 $added 件、合計 $total 件';
+  }
+
+  @override
+  String importFailed(String error) {
+    return '取り込みに失敗：$error';
+  }
+
+  @override
+  String get nothingToExport => '書き出せるレコードがありません';
 
   @override
   String get settings => '設定';

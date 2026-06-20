@@ -606,12 +606,17 @@ class _PasswordCardState extends State<_PasswordCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // 点击网址横条即复制网址（与列表点击复制逻辑一致）。
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    widget.entry.website,
-                    style: Theme.of(context).textTheme.titleMedium,
+                  child: _CopyBar(
+                    onTap: () =>
+                        _copy(widget.entry.website, l10n.websiteCopied),
+                    child: Text(
+                      widget.entry.website,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -633,7 +638,14 @@ class _PasswordCardState extends State<_PasswordCard> {
                   children: [
                     const Icon(Icons.person_outline, size: 16),
                     const SizedBox(width: 4),
-                    Expanded(child: Text(widget.entry.username)),
+                    // 点击用户名横条即复制用户名。
+                    Expanded(
+                      child: _CopyBar(
+                        onTap: () =>
+                            _copy(widget.entry.username, l10n.usernameCopied),
+                        child: Text(widget.entry.username),
+                      ),
+                    ),
                     IconButton(
                       tooltip: l10n.copyUsername,
                       icon: const Icon(Icons.copy, size: 18),
@@ -647,10 +659,15 @@ class _PasswordCardState extends State<_PasswordCard> {
               children: [
                 const Icon(Icons.key_outlined, size: 16),
                 const SizedBox(width: 4),
+                // 点击密码横条即复制密码（无论是否处于隐藏状态，复制的都是真实密码）。
                 Expanded(
-                  child: SelectableText(
-                    _show ? widget.entry.password : '•' * 12,
-                    style: const TextStyle(fontFamily: 'monospace'),
+                  child: _CopyBar(
+                    onTap: () =>
+                        _copy(widget.entry.password, l10n.passwordCopied),
+                    child: Text(
+                      _show ? widget.entry.password : '•' * 12,
+                      style: const TextStyle(fontFamily: 'monospace'),
+                    ),
                   ),
                 ),
                 IconButton(
@@ -728,6 +745,26 @@ class _PasswordCardState extends State<_PasswordCard> {
       SnackBar(content: Text(l10n.deleted)),
     );
     await _maybePromptPush(context);
+  }
+}
+
+/// 可点击复制的横条：点击触发 [onTap]，带轻微内边距与水波纹反馈。
+class _CopyBar extends StatelessWidget {
+  const _CopyBar({required this.onTap, required this.child});
+
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: child,
+      ),
+    );
   }
 }
 
