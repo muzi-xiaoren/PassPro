@@ -20,34 +20,78 @@ class UpdateInfo {
   });
 }
 
-/// 通过 GitHub Releases API 检查是否有新版本。
+/// 检查是否有新版本。
+///
+/// 故意不走 `api.github.com`：未带 token 的 GitHub API 每个 IP 每小时仅
+/// 60 次，手机走运营商 CGNAT 时同一公网 IP 被大量用户共享，极易被陌生人
+/// 耗光额度导致 403（即"检查更新失败"）。客户端又不能内嵌 token。
+///
+/// 改用 github.com 的网页端点（不受那条 60 次/小时的 API 限流约束）：
+///   1. `releases/latest` —— 302 跳转到 `releases/tag/<tag>`，读 Location 头；
+///   2. 兜底用 `releases.atom` 订阅源，第一条即最新 release。
 class UpdateChecker {
-  static const String _api =
-      'https://api.github.com/repos/muzi-xiaoren/PassPro/releases/latest';
-  static const String releasesPage =
-      'https://github.com/muzi-xiaoren/PassPro/releases/latest';
+  static const String _repo = 'https://github.com/muzi-xiaoren/PassPro';
+  static const String _ua = 'PassPro-app';
+  static const String releasesPage = '$_repo/releases/latest';
 
   /// 查询最新 Release 并与 [currentVersion]（如 "1.0.2"）比较。
-  /// 网络/解析失败会抛异常，由调用方处理。
+  /// 网络失败会抛异常，由调用方处理。
   static Future<UpdateInfo> check(String currentVersion) async {
-    final resp = await http.get(
-      Uri.parse(_api),
-      headers: const {
-        'Accept': 'application/vnd.github+json',
-        'User-Agent': 'PassPro-app',
-      },
-    ).timeout(const Duration(seconds: 12));
-    if (resp.statusCode != 200) {
-      throw Exception('HTTP ${resp.statusCode}');
+    final found = await _tryRedirect() ?? await _tryAtom();
+    if (found == null) {
+      throw Exception('no release found');
     }
-    final json = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-    final latest = _stripV((json['tag_name'] as String?) ?? '');
-    final url = (json['html_url'] as String?) ?? releasesPage;
+    final latest = _stripV(found.tag);
     return UpdateInfo(
       latestVersion: latest.isEmpty ? currentVersion : latest,
-      htmlUrl: url,
+      htmlUrl: found.url,
       hasUpdate: latest.isNotEmpty && _isNewer(latest, currentVersion),
     );
+  }
+
+  /// 请求 `releases/latest` 但不跟随重定向，从 302 的 Location 头解析 tag。
+  static Future<({String tag, String url})?> _tryRedirect() async {
+    final client = http.Client();
+    try {
+      final req = http.Request('GET', Uri.parse('$_repo/releases/latest'))
+        ..followRedirects = false
+        ..headers['User-Agent'] = _ua;
+      final resp = await client.send(req).timeout(const Duration(seconds: 12));
+      await resp.stream.drain<void>();
+      final loc = resp.headers['location'];
+      final tag = _tagFromUrl(loc);
+      if (tag != null && loc != null) return (tag: tag, url: loc);
+      return null;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
+  /// 兜底：解析 atom 订阅源里第一条 release 的 tag 链接。
+  static Future<({String tag, String url})?> _tryAtom() async {
+    try {
+      final resp = await http.get(
+        Uri.parse('$_repo/releases.atom'),
+        headers: const {'User-Agent': _ua},
+      ).timeout(const Duration(seconds: 12));
+      if (resp.statusCode != 200) return null;
+      final body = utf8.decode(resp.bodyBytes);
+      final m = RegExp(r'/releases/tag/([^"/?#<\s]+)').firstMatch(body);
+      final tag = m?.group(1);
+      if (tag == null || tag.isEmpty) return null;
+      return (tag: tag, url: '$_repo/releases/tag/$tag');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 从形如 `.../releases/tag/v1.0.3` 的地址里取出 tag。
+  static String? _tagFromUrl(String? url) {
+    if (url == null) return null;
+    final m = RegExp(r'/releases/tag/([^/?#]+)').firstMatch(url);
+    return m?.group(1);
   }
 
   static String _stripV(String tag) {
