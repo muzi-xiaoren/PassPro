@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import '../models/password_entry.dart';
 import '../settings/app_settings.dart';
 import '../settings/secure_credential_store.dart';
+import '../storage/compactor.dart';
 import '../storage/conflict_merger.dart';
 import '../storage/log_store.dart';
 import '../storage/memory_index.dart';
@@ -102,6 +103,9 @@ class SyncManager extends ChangeNotifier {
   final SecureCredentialStore credentials;
   final LogStore logStore;
   final MemoryIndex memoryIndex;
+
+  /// 推送前自动整理日志用（无状态，直接复用同一份 store+index）。
+  late final Compactor _compactor = Compactor(logStore, memoryIndex);
 
   SyncStatus _status = const SyncStatus();
   SyncStatus get status => _status;
@@ -245,8 +249,21 @@ class SyncManager extends ChangeNotifier {
 
   /// 推送当前本地日志：primary 必成功，mirror 尽力。
   /// 返回 true 表示 primary 写入成功。
-  Future<bool> pushAll({String commitMessage = 'update passwords'}) async {
+  Future<bool> pushAll({
+    String commitMessage = 'update passwords',
+    bool autoCompact = true,
+  }) async {
     if (!settings.cloudEnabled) return false;
+
+    // 推送前自动整理日志：仅在日志明显膨胀（compactor 的 ≥3× 放大率阈值）时触发，
+    // 普通推送零影响。先 pull 对齐远端再 compact，满足 compactor「远端无未拉取
+    // 变更」的前提（与手动「整理日志」同一套 pull→compact→push 协议）。
+    // 注意：compaction 会塌缩历史、丢弃删除墓碑，故只在膨胀时做。
+    if (autoCompact && _compactor.shouldCompact()) {
+      await pullAndMerge();
+      await _compactor.compact();
+    }
+
     _setStatus(_status.copyWith(state: SyncState.working));
 
     final primary = await _primary();
@@ -296,7 +313,7 @@ class SyncManager extends ChangeNotifier {
       // 远端比本地新：先拉合并，再重试一次
       final changed = await pullAndMerge();
       if (changed) {
-        return pushAll(commitMessage: commitMessage);
+        return pushAll(commitMessage: commitMessage, autoCompact: false);
       }
       _setStatus(_status.copyWith(
         state: SyncState.error,
