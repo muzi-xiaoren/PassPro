@@ -83,6 +83,7 @@
     "placeholders": { "website": { "type": "String" } }
   },
   "cancel": "Cancel",
+  "confirm": "Confirm",
   "deleted": "Deleted",
   "generatePassword": "Generate password",
   "length": "Length",

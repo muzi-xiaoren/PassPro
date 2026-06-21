@@ -220,6 +220,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cancel => 'Отмена';
 
   @override
+  String get confirm => 'Подтвердить';
+
+  @override
   String get deleted => 'Удалено';
 
   @override

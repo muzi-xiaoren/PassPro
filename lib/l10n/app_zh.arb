@@ -62,6 +62,7 @@
   "confirmDelete": "确认删除",
   "deleteBody": "删除 {website} 的这条记录？",
   "cancel": "取消",
+  "confirm": "确认",
   "deleted": "已删除",
   "generatePassword": "生成密码",
   "length": "长度",

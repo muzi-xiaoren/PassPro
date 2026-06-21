@@ -1260,10 +1260,65 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
     if (context.mounted) Navigator.of(context).pop(true);
   }
 
+  /// 三个字段相比打开时是否有改动（与保存一致，按 trim 后比较）。
+  bool _isDirty() =>
+      _website.text.trim() != widget.existing.website ||
+      _username.text.trim() != widget.existing.username ||
+      _password.text != widget.existing.password;
+
+  /// 返回键处理：无改动直接返回；有改动则先把内容保存到本地（绝不丢失），
+  /// 再询问是否推送远端（[确认]=推送 / [取消]=仅本地保存不推送），两者都返回。
+  Future<void> _onBack() async {
+    final navigator = Navigator.of(context);
+    if (!_isDirty()) {
+      navigator.pop();
+      return;
+    }
+    final app = context.read<AppState>();
+    final l10n = AppLocalizations.of(context)!;
+    await app.vault.update(
+      id: widget.existing.id,
+      website: _website.text.trim(),
+      username: _username.text.trim(),
+      plaintextPassword: _password.text,
+      masterKey: app.masterKey,
+    );
+    if (!mounted) return;
+    // 未开启云同步：保存即可，无需询问推送。
+    if (!app.settings.cloudEnabled) {
+      navigator.pop(true);
+      return;
+    }
+    final doPush = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.pushTitle),
+        content: Text(l10n.pushMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (doPush == true) {
+      await _runWithProgress(context, () => app.sync.pushAll());
+      if (!mounted) return;
+      _showSyncResult(context);
+    }
+    navigator.pop(true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
+    final scaffold = Scaffold(
       appBar: AppBar(
         title: Text(l10n.edit),
         actions: [
@@ -1329,6 +1384,15 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
           ],
         ),
       ),
+    );
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _onBack();
+      },
+      child: scaffold,
     );
   }
 }

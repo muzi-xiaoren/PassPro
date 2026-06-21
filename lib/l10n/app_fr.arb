@@ -62,6 +62,7 @@
   "confirmDelete": "Confirmer la suppression",
   "deleteBody": "Supprimer cet enregistrement pour {website} ?",
   "cancel": "Annuler",
+  "confirm": "Confirmer",
   "deleted": "Supprimé",
   "generatePassword": "Générer un mot de passe",
   "length": "Longueur",

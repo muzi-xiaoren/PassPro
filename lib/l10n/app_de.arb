@@ -62,6 +62,7 @@
   "confirmDelete": "Löschen bestätigen",
   "deleteBody": "Diesen Eintrag für {website} löschen?",
   "cancel": "Abbrechen",
+  "confirm": "Bestätigen",
   "deleted": "Gelöscht",
   "generatePassword": "Passwort generieren",
   "length": "Länge",

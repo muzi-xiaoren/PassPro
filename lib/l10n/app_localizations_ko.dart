@@ -211,6 +211,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cancel => '취소';
 
   @override
+  String get confirm => '확인';
+
+  @override
   String get deleted => '삭제됨';
 
   @override

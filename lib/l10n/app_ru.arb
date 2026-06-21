@@ -62,6 +62,7 @@
   "confirmDelete": "Подтвердите удаление",
   "deleteBody": "Удалить эту запись для {website}?",
   "cancel": "Отмена",
+  "confirm": "Подтвердить",
   "deleted": "Удалено",
   "generatePassword": "Сгенерировать пароль",
   "length": "Длина",

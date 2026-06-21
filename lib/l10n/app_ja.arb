@@ -62,6 +62,7 @@
   "confirmDelete": "削除の確認",
   "deleteBody": "{website} のこのレコードを削除しますか？",
   "cancel": "キャンセル",
+  "confirm": "確認",
   "deleted": "削除しました",
   "generatePassword": "パスワードを生成",
   "length": "長さ",
