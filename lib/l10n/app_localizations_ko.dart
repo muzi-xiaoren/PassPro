@@ -276,10 +276,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get sortNameDesc => '이름 Z→A';
 
   @override
-  String get sortTimeDesc => '추가 시간(최신순)';
+  String get sortTimeDesc => '수정 시간(최신순)';
 
   @override
-  String get sortTimeAsc => '추가 시간(오래된순)';
+  String get sortTimeAsc => '수정 시간(오래된순)';
 
   @override
   String get sortTooltip => '정렬';
@@ -608,4 +608,60 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get changeMasterKeyHint =>
       '현재 세션에서 사용하는 마스터 키를 교체합니다. 이후의 암호화/복호화에만 영향을 주며 기존 항목은 변경되지 않습니다.';
+
+  @override
+  String get autoSyncOnLaunch => '실행 시 자동 동기화';
+
+  @override
+  String get autoSyncOnLaunchSub => '앱을 열 때마다 원격에서 가져와 병합합니다';
+
+  @override
+  String get sectionBackground => '배경 이미지';
+
+  @override
+  String get bgChooseImage => '이미지 선택';
+
+  @override
+  String get bgImageSet => '설정됨 — 눌러서 변경';
+
+  @override
+  String get bgNoImage => '배경 이미지 없음';
+
+  @override
+  String get bgClearImage => '이미지 제거';
+
+  @override
+  String get bgOpacity => '불투명도';
+
+  @override
+  String get bgBlur => '흐림';
+
+  @override
+  String get bgFit => '크기';
+
+  @override
+  String get bgFitCover => '채우기';
+
+  @override
+  String get bgFitContain => '맞춤';
+
+  @override
+  String get bgFitFill => '늘이기';
+
+  @override
+  String get bgFitWidth => '너비 맞춤';
+
+  @override
+  String listModifiedAt(String time) {
+    return '수정 $time';
+  }
+
+  @override
+  String get mirrorSyncDone => '미러 동기화 완료';
+
+  @override
+  String get sortCopyCountDesc => '자주 사용순';
+
+  @override
+  String get sortRelevance => '관련도';
 }

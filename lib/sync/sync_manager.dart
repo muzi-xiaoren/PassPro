@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:pointycastle/export.dart';
 
 import '../models/password_entry.dart';
 import '../settings/app_settings.dart';
@@ -115,6 +116,18 @@ class SyncManager extends ChangeNotifier {
 
   /// 远端是否比上次同步更新（true=有新内容应提示拉取；null=未知/无法检测）。
   bool? remoteHasUpdates;
+
+  /// 副仓库后台推送完成事件（供 UI 在底部以 SnackBar 提示结果）。
+  final StreamController<List<MirrorResult>> _mirrorDone =
+      StreamController<List<MirrorResult>>.broadcast();
+  Stream<List<MirrorResult>> get mirrorDone => _mirrorDone.stream;
+  bool _mirrorPushInFlight = false;
+
+  @override
+  void dispose() {
+    _mirrorDone.close();
+    super.dispose();
+  }
 
   void _setStatus(SyncStatus s) {
     _status = s;
@@ -277,6 +290,7 @@ class SyncManager extends ChangeNotifier {
 
     final primaryName = primary.kind.name;
     final localBytes = await _readLocalBytes();
+    final localSha = gitBlobSha(localBytes);
     String? baseVersion;
     try {
       baseVersion = await primary.headVersion();
@@ -284,58 +298,94 @@ class SyncManager extends ChangeNotifier {
       // 拉取 head 失败也不阻塞（仓库可能不存在文件）
     }
 
-    PushOutcome outcome;
-    try {
-      outcome = await primary.push(
-        content: localBytes,
-        baseVersion: baseVersion,
-        commitMessage: commitMessage,
-      );
-    } on SocketException catch (e) {
-      _setStatus(_status.copyWith(
-        state: SyncState.offline,
-        msg: SyncMsg.primaryOffline,
-        arg: '$e',
-        primaryBackend: primaryName,
-      ));
-      return false;
-    } catch (e) {
-      _setStatus(_status.copyWith(
-        state: SyncState.error,
-        msg: SyncMsg.primaryPushFailed,
-        arg: '$e',
-        primaryBackend: primaryName,
-      ));
-      return false;
-    }
+    // 主仓库是 git(GitHub/Gitee)且本地与远端 blob sha 完全一致 → 内容相同，
+    // 跳过推送，避免无意义的空提交和多余请求。（WebDAV 用 ETag，不参与此判断。）
+    final primaryIdentical = primary.kind != BackendKind.webdav &&
+        baseVersion != null &&
+        baseVersion == localSha;
 
-    if (outcome == PushOutcome.conflict) {
-      // 远端比本地新：先拉合并，再重试一次
-      final changed = await pullAndMerge();
-      if (changed) {
-        return pushAll(commitMessage: commitMessage, autoCompact: false);
+    if (!primaryIdentical) {
+      PushOutcome outcome;
+      try {
+        outcome = await primary.push(
+          content: localBytes,
+          baseVersion: baseVersion,
+          commitMessage: commitMessage,
+        );
+      } on SocketException catch (e) {
+        _setStatus(_status.copyWith(
+          state: SyncState.offline,
+          msg: SyncMsg.primaryOffline,
+          arg: '$e',
+          primaryBackend: primaryName,
+        ));
+        return false;
+      } catch (e) {
+        _setStatus(_status.copyWith(
+          state: SyncState.error,
+          msg: SyncMsg.primaryPushFailed,
+          arg: '$e',
+          primaryBackend: primaryName,
+        ));
+        return false;
       }
-      _setStatus(_status.copyWith(
-        state: SyncState.error,
-        msg: SyncMsg.pushConflictManual,
-        primaryBackend: primaryName,
-      ));
-      return false;
+
+      if (outcome == PushOutcome.conflict) {
+        // 远端比本地新：先拉合并，再重试一次
+        final changed = await pullAndMerge();
+        if (changed) {
+          return pushAll(commitMessage: commitMessage, autoCompact: false);
+        }
+        _setStatus(_status.copyWith(
+          state: SyncState.error,
+          msg: SyncMsg.pushConflictManual,
+          primaryBackend: primaryName,
+        ));
+        return false;
+      }
     }
 
-    // primary 成功后再尽力推 mirror，逐个记录结果（成功/冲突/失败）。
-    final mirrors = await _pushMirrors(localBytes, commitMessage);
-
-    _knownRemoteVersion = await primary.headVersion();
+    // 主仓库已成功（或本就一致）：立即结束（不再阻塞页面），副仓库交给后台异步推送。
+    _knownRemoteVersion =
+        primaryIdentical ? baseVersion : await primary.headVersion();
     _setStatus(_status.copyWith(
       state: SyncState.ok,
       lastSyncAt: DateTime.now(),
       lastRemoteVersion: _knownRemoteVersion,
       msg: SyncMsg.pushedToPrimary,
       primaryBackend: primaryName,
-      mirrors: mirrors,
+      mirrors: const [],
     ));
+    if (settings.mirrorBackends.isNotEmpty) {
+      unawaited(
+          _pushMirrorsAsync(localBytes, commitMessage, primaryName, localSha));
+    }
     return true;
+  }
+
+  /// 后台推送副仓库：完成后更新状态并广播事件（UI 在底部提示成功/失败）。
+  Future<void> _pushMirrorsAsync(
+    Uint8List localBytes,
+    String commitMessage,
+    String primaryName,
+    String localSha,
+  ) async {
+    if (_mirrorPushInFlight) return;
+    _mirrorPushInFlight = true;
+    try {
+      final mirrors =
+          await _pushMirrors(localBytes, commitMessage, localSha: localSha);
+      _setStatus(_status.copyWith(
+        state: SyncState.ok,
+        primaryBackend: primaryName,
+        mirrors: mirrors,
+      ));
+      if (!_mirrorDone.isClosed) _mirrorDone.add(mirrors);
+    } catch (_) {
+      // 副仓库失败不影响主流程；_pushMirrors 内部已逐个兜底，这里仅防御。
+    } finally {
+      _mirrorPushInFlight = false;
+    }
   }
 
   /// 把本地内容尽力推送到每个 mirror，逐个返回结果（不抛异常）。
@@ -345,6 +395,7 @@ class SyncManager extends ChangeNotifier {
     Uint8List localBytes,
     String commitMessage, {
     bool merge = true,
+    String? localSha,
   }) async {
     final results = <MirrorResult>[];
     for (final m in await _mirrors()) {
@@ -354,6 +405,14 @@ class SyncManager extends ChangeNotifier {
         try {
           mv = await m.headVersion();
         } catch (_) {}
+        // git 副仓库内容已与本地一致 → 跳过，避免空提交。
+        if (m.kind != BackendKind.webdav &&
+            localSha != null &&
+            mv != null &&
+            mv == localSha) {
+          results.add(MirrorResult(name, MirrorOutcome.ok));
+          continue;
+        }
         var mo = await m.push(
           content: localBytes,
           baseVersion: mv,
@@ -565,6 +624,25 @@ class SyncManager extends ChangeNotifier {
   Future<Uint8List> _readLocalBytes() async {
     final file = logStore.file;
     return file.readAsBytes();
+  }
+
+  /// 计算内容的 git blob SHA-1（与 GitHub/Gitee contents API 返回的 sha 一致），
+  /// 用于判断「本地与远端内容是否相同」，相同则跳过推送。
+  /// git blob 对象 = "blob " + 字节数 + 一个 NUL 字节 + 内容，取其 SHA-1。
+  @visibleForTesting
+  static String gitBlobSha(Uint8List content) {
+    final prefix = Uint8List.fromList(utf8.encode('blob ${content.length}'));
+    final digest = SHA1Digest()
+      ..update(prefix, 0, prefix.length)
+      ..update(Uint8List(1), 0, 1) // NUL 分隔符
+      ..update(content, 0, content.length);
+    final out = Uint8List(20);
+    digest.doFinal(out, 0);
+    final sb = StringBuffer();
+    for (final b in out) {
+      sb.write(b.toRadixString(16).padLeft(2, '0'));
+    }
+    return sb.toString();
   }
 
   List<LogRecord> _parseLog(Uint8List bytes) {

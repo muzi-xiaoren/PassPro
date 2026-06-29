@@ -288,10 +288,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sortNameDesc => 'Nom Z→A';
 
   @override
-  String get sortTimeDesc => 'Date d\'ajout (du plus récent)';
+  String get sortTimeDesc => 'Modifié (récent d\'abord)';
 
   @override
-  String get sortTimeAsc => 'Date d\'ajout (du plus ancien)';
+  String get sortTimeAsc => 'Modifié (ancien d\'abord)';
 
   @override
   String get sortTooltip => 'Trier';
@@ -630,4 +630,61 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get changeMasterKeyHint =>
       'Change la clé maître utilisée par la session actuelle. N\'affecte que le chiffrement/déchiffrement à partir de maintenant et ne modifie pas les entrées existantes.';
+
+  @override
+  String get autoSyncOnLaunch => 'Synchronisation auto au démarrage';
+
+  @override
+  String get autoSyncOnLaunchSub =>
+      'Récupère et fusionne depuis le distant à chaque ouverture';
+
+  @override
+  String get sectionBackground => 'Image d\'arrière-plan';
+
+  @override
+  String get bgChooseImage => 'Choisir une image';
+
+  @override
+  String get bgImageSet => 'Image définie — appuyez pour remplacer';
+
+  @override
+  String get bgNoImage => 'Aucune image d\'arrière-plan';
+
+  @override
+  String get bgClearImage => 'Supprimer l\'image';
+
+  @override
+  String get bgOpacity => 'Opacité';
+
+  @override
+  String get bgBlur => 'Flou';
+
+  @override
+  String get bgFit => 'Taille';
+
+  @override
+  String get bgFitCover => 'Couvrir';
+
+  @override
+  String get bgFitContain => 'Contenir';
+
+  @override
+  String get bgFitFill => 'Étirer';
+
+  @override
+  String get bgFitWidth => 'Ajuster en largeur';
+
+  @override
+  String listModifiedAt(String time) {
+    return 'Modifié $time';
+  }
+
+  @override
+  String get mirrorSyncDone => 'Synchronisation des miroirs terminée';
+
+  @override
+  String get sortCopyCountDesc => 'Les plus utilisés';
+
+  @override
+  String get sortRelevance => 'Pertinence';
 }

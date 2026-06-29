@@ -103,6 +103,13 @@ class AppSettings extends ChangeNotifier {
   static const _kSearchMode = 'search_mode';
   static const _kSearchCustomDelimiter = 'search_custom_delimiter';
   static const _kSearchCustomStrategy = 'search_custom_strategy';
+  static const _kAutoSyncOnLaunch = 'auto_sync_on_launch';
+  static const _kCopyCounts = 'copy_counts';
+  static const _kBgPath = 'bg_image_path';
+  static const _kBgOpacity = 'bg_opacity';
+  static const _kBgBlur = 'bg_blur';
+  static const _kBgFit = 'bg_fit';
+  static const _kSectionExpanded = 'section_expanded';
 
   final SharedPreferences _prefs;
 
@@ -281,5 +288,108 @@ class AppSettings extends ChangeNotifier {
     };
     await _prefs.setString(key, jsonEncode(config.toJson()));
     notifyListeners();
+  }
+
+  // ============ 进入软件自动同步 ============
+
+  /// 启动 app 时是否自动从远端拉取合并（默认关闭）。
+  bool get autoSyncOnLaunch => _prefs.getBool(_kAutoSyncOnLaunch) ?? false;
+
+  Future<void> setAutoSyncOnLaunch(bool v) async {
+    await _prefs.setBool(_kAutoSyncOnLaunch, v);
+    notifyListeners();
+  }
+
+  // ============ 复制次数（本地、按 record_id 统计，用于“最常用”排序） ============
+
+  Map<String, int>? _copyCountsCache;
+  Map<String, int> get _copyCounts {
+    final cached = _copyCountsCache;
+    if (cached != null) return cached;
+    final m = <String, int>{};
+    final raw = _prefs.getString(_kCopyCounts);
+    if (raw != null) {
+      try {
+        (jsonDecode(raw) as Map).forEach((k, v) {
+          m[k as String] = (v as num).toInt();
+        });
+      } catch (_) {/* 坏数据当作空 */}
+    }
+    return _copyCountsCache = m;
+  }
+
+  int copyCount(String id) => _copyCounts[id] ?? 0;
+
+  Future<void> bumpCopyCount(String id) async {
+    final m = _copyCounts;
+    m[id] = (m[id] ?? 0) + 1;
+    await _prefs.setString(_kCopyCounts, jsonEncode(m));
+    notifyListeners();
+  }
+
+  // ============ 背景图（路径 + 透明度 + 模糊度 + 大小/填充方式） ============
+
+  /// 背景图文件路径；空字符串表示未设置。
+  String get backgroundPath => _prefs.getString(_kBgPath) ?? '';
+
+  /// 图片不透明度 0~1（越大越清晰，默认较淡）。
+  double get backgroundOpacity => _prefs.getDouble(_kBgOpacity) ?? 0.25;
+
+  /// 高斯模糊 sigma 0~20（默认不模糊）。
+  double get backgroundBlur => _prefs.getDouble(_kBgBlur) ?? 0.0;
+
+  /// 大小/填充方式：cover / contain / fill / fitWidth。
+  String get backgroundFit => _prefs.getString(_kBgFit) ?? 'cover';
+
+  bool get hasBackground => backgroundPath.isNotEmpty;
+
+  Future<void> setBackgroundPath(String path) async {
+    if (path.isEmpty) {
+      await _prefs.remove(_kBgPath);
+    } else {
+      await _prefs.setString(_kBgPath, path);
+    }
+    notifyListeners();
+  }
+
+  Future<void> setBackgroundOpacity(double v) async {
+    await _prefs.setDouble(_kBgOpacity, v.clamp(0.0, 1.0));
+    notifyListeners();
+  }
+
+  Future<void> setBackgroundBlur(double v) async {
+    await _prefs.setDouble(_kBgBlur, v.clamp(0.0, 20.0));
+    notifyListeners();
+  }
+
+  Future<void> setBackgroundFit(String v) async {
+    await _prefs.setString(_kBgFit, v);
+    notifyListeners();
+  }
+
+  // ============ 设置分区展开状态（可下拉打开/收起） ============
+
+  Map<String, bool>? _sectionExpandedCache;
+  Map<String, bool> get _sectionExpanded {
+    final cached = _sectionExpandedCache;
+    if (cached != null) return cached;
+    final m = <String, bool>{};
+    final raw = _prefs.getString(_kSectionExpanded);
+    if (raw != null) {
+      try {
+        (jsonDecode(raw) as Map).forEach((k, v) => m[k as String] = v == true);
+      } catch (_) {}
+    }
+    return _sectionExpandedCache = m;
+  }
+
+  bool sectionExpanded(String key, {bool def = false}) =>
+      _sectionExpanded[key] ?? def;
+
+  /// 记住分区展开/收起；不触发全局重建（ExpansionTile 自己管动画）。
+  Future<void> setSectionExpanded(String key, bool v) async {
+    final m = _sectionExpanded;
+    m[key] = v;
+    await _prefs.setString(_kSectionExpanded, jsonEncode(m));
   }
 }

@@ -609,13 +609,13 @@ abstract class AppLocalizations {
   /// No description provided for @sortTimeDesc.
   ///
   /// In en, this message translates to:
-  /// **'Date added (newest first)'**
+  /// **'Modified (newest first)'**
   String get sortTimeDesc;
 
   /// No description provided for @sortTimeAsc.
   ///
   /// In en, this message translates to:
-  /// **'Date added (oldest first)'**
+  /// **'Modified (oldest first)'**
   String get sortTimeAsc;
 
   /// No description provided for @sortTooltip.
@@ -1199,6 +1199,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hot-swaps the master key used by the current session. It only affects encryption/decryption from now on and does not modify existing entries.'**
   String get changeMasterKeyHint;
+
+  /// No description provided for @autoSyncOnLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-sync on launch'**
+  String get autoSyncOnLaunch;
+
+  /// No description provided for @autoSyncOnLaunchSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull and merge from the remote each time the app opens'**
+  String get autoSyncOnLaunchSub;
+
+  /// No description provided for @sectionBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Background image'**
+  String get sectionBackground;
+
+  /// No description provided for @bgChooseImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose image'**
+  String get bgChooseImage;
+
+  /// No description provided for @bgImageSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Image set — tap to replace'**
+  String get bgImageSet;
+
+  /// No description provided for @bgNoImage.
+  ///
+  /// In en, this message translates to:
+  /// **'No background image'**
+  String get bgNoImage;
+
+  /// No description provided for @bgClearImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove image'**
+  String get bgClearImage;
+
+  /// No description provided for @bgOpacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Opacity'**
+  String get bgOpacity;
+
+  /// No description provided for @bgBlur.
+  ///
+  /// In en, this message translates to:
+  /// **'Blur'**
+  String get bgBlur;
+
+  /// No description provided for @bgFit.
+  ///
+  /// In en, this message translates to:
+  /// **'Size'**
+  String get bgFit;
+
+  /// No description provided for @bgFitCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover'**
+  String get bgFitCover;
+
+  /// No description provided for @bgFitContain.
+  ///
+  /// In en, this message translates to:
+  /// **'Contain'**
+  String get bgFitContain;
+
+  /// No description provided for @bgFitFill.
+  ///
+  /// In en, this message translates to:
+  /// **'Stretch'**
+  String get bgFitFill;
+
+  /// No description provided for @bgFitWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit width'**
+  String get bgFitWidth;
+
+  /// No description provided for @listModifiedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Modified {time}'**
+  String listModifiedAt(String time);
+
+  /// No description provided for @mirrorSyncDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Mirror sync finished'**
+  String get mirrorSyncDone;
+
+  /// No description provided for @sortCopyCountDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Most used'**
+  String get sortCopyCountDesc;
+
+  /// No description provided for @sortRelevance.
+  ///
+  /// In en, this message translates to:
+  /// **'Relevance'**
+  String get sortRelevance;
 }
 
 class _AppLocalizationsDelegate

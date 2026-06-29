@@ -288,10 +288,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sortNameDesc => 'Name Z→A';
 
   @override
-  String get sortTimeDesc => 'Hinzugefügt (neueste zuerst)';
+  String get sortTimeDesc => 'Geändert (neueste zuerst)';
 
   @override
-  String get sortTimeAsc => 'Hinzugefügt (älteste zuerst)';
+  String get sortTimeAsc => 'Geändert (älteste zuerst)';
 
   @override
   String get sortTooltip => 'Sortieren';
@@ -631,4 +631,61 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get changeMasterKeyHint =>
       'Wechselt den in der aktuellen Sitzung verwendeten Hauptschlüssel. Betrifft nur die Ver-/Entschlüsselung ab jetzt und ändert bestehende Einträge nicht.';
+
+  @override
+  String get autoSyncOnLaunch => 'Auto-Sync beim Start';
+
+  @override
+  String get autoSyncOnLaunchSub =>
+      'Bei jedem Start vom Remote abrufen und zusammenführen';
+
+  @override
+  String get sectionBackground => 'Hintergrundbild';
+
+  @override
+  String get bgChooseImage => 'Bild auswählen';
+
+  @override
+  String get bgImageSet => 'Bild gesetzt – zum Ersetzen tippen';
+
+  @override
+  String get bgNoImage => 'Kein Hintergrundbild';
+
+  @override
+  String get bgClearImage => 'Bild entfernen';
+
+  @override
+  String get bgOpacity => 'Deckkraft';
+
+  @override
+  String get bgBlur => 'Unschärfe';
+
+  @override
+  String get bgFit => 'Größe';
+
+  @override
+  String get bgFitCover => 'Ausfüllen';
+
+  @override
+  String get bgFitContain => 'Einpassen';
+
+  @override
+  String get bgFitFill => 'Strecken';
+
+  @override
+  String get bgFitWidth => 'Breite anpassen';
+
+  @override
+  String listModifiedAt(String time) {
+    return 'Geändert $time';
+  }
+
+  @override
+  String get mirrorSyncDone => 'Spiegel-Synchronisierung abgeschlossen';
+
+  @override
+  String get sortCopyCountDesc => 'Meistgenutzt';
+
+  @override
+  String get sortRelevance => 'Relevanz';
 }

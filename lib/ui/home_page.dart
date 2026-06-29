@@ -24,15 +24,25 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
   late final TabController _tab;
+  StreamSubscription<List<MirrorResult>>? _mirrorSub;
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
+    // 副仓库后台同步完成后，在底部以 SnackBar 提示是否成功。
+    _mirrorSub = context.read<SyncManager>().mirrorDone.listen((mirrors) {
+      if (!mounted || mirrors.isEmpty) return;
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_mirrorResultText(l10n, mirrors))),
+      );
+    });
   }
 
   @override
   void dispose() {
+    _mirrorSub?.cancel();
     _tab.dispose();
     super.dispose();
   }
@@ -40,11 +50,29 @@ class _HomePageState extends State<HomePage>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('PassPro'),
         actions: [
           const _SyncStatusBadge(),
+          // 更换主密钥 / 锁定：拆成两个独立按钮，排在顶栏。
+          IconButton(
+            tooltip: l10n.changeMasterKey,
+            icon: const Icon(Icons.key_outlined),
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => const _ChangeKeyDialog(),
+            ),
+          ),
+          IconButton(
+            tooltip: l10n.lock,
+            icon: const Icon(Icons.lock_outline),
+            onPressed: () {
+              context.read<AppState>().lock();
+              Navigator.of(context).popUntil((r) => r.isFirst);
+            },
+          ),
           IconButton(
             tooltip: l10n.settings,
             icon: const Icon(Icons.settings_outlined),
@@ -52,16 +80,7 @@ class _HomePageState extends State<HomePage>
               MaterialPageRoute(builder: (_) => const SettingsPage()),
             ),
           ),
-          const _AccountMenu(),
         ],
-        bottom: TabBar(
-          controller: _tab,
-          tabs: [
-            Tab(icon: const Icon(Icons.search), text: l10n.tabQuery),
-            Tab(icon: const Icon(Icons.add_circle_outline), text: l10n.tabAdd),
-            Tab(icon: const Icon(Icons.list_alt), text: l10n.tabList),
-          ],
-        ),
       ),
       body: TabBarView(
         controller: _tab,
@@ -70,6 +89,25 @@ class _HomePageState extends State<HomePage>
           _AddTab(),
           _ListTab(),
         ],
+      ),
+      // 查询 / 新增 / 列表三个标签移到底部，单手操作更顺。
+      bottomNavigationBar: Material(
+        color: scheme.surface,
+        elevation: 8,
+        child: SafeArea(
+          top: false,
+          child: TabBar(
+            controller: _tab,
+            labelColor: scheme.primary,
+            unselectedLabelColor: scheme.onSurfaceVariant,
+            indicatorColor: scheme.primary,
+            tabs: [
+              Tab(icon: const Icon(Icons.search), text: l10n.tabQuery),
+              Tab(icon: const Icon(Icons.add_circle_outline), text: l10n.tabAdd),
+              Tab(icon: const Icon(Icons.list_alt), text: l10n.tabList),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -132,6 +170,23 @@ String? _syncStatusText(AppLocalizations l10n, SyncStatus s) {
     case SyncMsg.genericError:
       return l10n.syncGenericError(arg);
   }
+}
+
+/// 副仓库后台同步结果文案："副仓库同步完成: gitee(成功), webdav(失败: ...)"。
+String _mirrorResultText(AppLocalizations l10n, List<MirrorResult> mirrors) {
+  String word(MirrorOutcome o) => switch (o) {
+        MirrorOutcome.ok => l10n.syncMirrorOk,
+        MirrorOutcome.conflict => l10n.syncMirrorConflict,
+        MirrorOutcome.failed => l10n.syncMirrorFailed,
+      };
+  final summary = mirrors.map((m) {
+    final extra =
+        (m.outcome == MirrorOutcome.failed && (m.detail?.isNotEmpty ?? false))
+            ? ': ${m.detail}'
+            : '';
+    return '${m.backend} (${word(m.outcome)}$extra)';
+  }).join(', ');
+  return '${l10n.mirrorSyncDone}: $summary';
 }
 
 class _SyncStatusBadge extends StatelessWidget {
@@ -261,58 +316,7 @@ class _SyncStatusBadge extends StatelessWidget {
   }
 }
 
-// ===================== 顶栏账户菜单（锁定 / 更换密钥） =====================
-
-enum _AccountAction { changeKey, lock }
-
-class _AccountMenu extends StatelessWidget {
-  const _AccountMenu();
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return PopupMenuButton<_AccountAction>(
-      icon: const Icon(Icons.lock_outline),
-      tooltip: l10n.accountMenu,
-      onSelected: (a) async {
-        switch (a) {
-          case _AccountAction.changeKey:
-            await showDialog<void>(
-              context: context,
-              builder: (_) => const _ChangeKeyDialog(),
-            );
-          case _AccountAction.lock:
-            context.read<AppState>().lock();
-            Navigator.of(context).popUntil((r) => r.isFirst);
-        }
-      },
-      itemBuilder: (_) => [
-        PopupMenuItem(
-          value: _AccountAction.changeKey,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.key_outlined, size: 20),
-              const SizedBox(width: 12),
-              Text(l10n.changeMasterKey),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: _AccountAction.lock,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.lock_outline, size: 20),
-              const SizedBox(width: 12),
-              Text(l10n.lock),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+// ===================== 更换主密钥弹窗（只输入一次） =====================
 
 class _ChangeKeyDialog extends StatefulWidget {
   const _ChangeKeyDialog();
@@ -323,9 +327,7 @@ class _ChangeKeyDialog extends StatefulWidget {
 
 class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
   final _key = TextEditingController();
-  final _confirm = TextEditingController();
   late bool _obscure;
-  String? _error;
 
   @override
   void initState() {
@@ -337,7 +339,6 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
   @override
   void dispose() {
     _key.dispose();
-    _confirm.dispose();
     super.dispose();
   }
 
@@ -345,11 +346,6 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
     final l10n = AppLocalizations.of(context)!;
     // 与解锁一致：留空 → 单空格
     final newPw = _key.text.isEmpty ? ' ' : _key.text;
-    final confirmPw = _confirm.text.isEmpty ? ' ' : _confirm.text;
-    if (newPw != confirmPw) {
-      setState(() => _error = l10n.masterKeyMismatch);
-      return;
-    }
     final messenger = ScaffoldMessenger.of(context);
     context.read<AppState>().rekey(newPw);
     Navigator.of(context).pop();
@@ -371,6 +367,7 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
             controller: _key,
             obscureText: _obscure,
             autofocus: true,
+            onSubmitted: (_) => _submit(),
             decoration: InputDecoration(
               labelText: l10n.newMasterKey,
               border: const OutlineInputBorder(),
@@ -388,23 +385,6 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
                 },
               ),
             ),
-            onChanged: (_) {
-              if (_error != null) setState(() => _error = null);
-            },
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _confirm,
-            obscureText: _obscure,
-            onSubmitted: (_) => _submit(),
-            decoration: InputDecoration(
-              labelText: l10n.confirmNewMasterKey,
-              border: const OutlineInputBorder(),
-              errorText: _error,
-            ),
-            onChanged: (_) {
-              if (_error != null) setState(() => _error = null);
-            },
           ),
           const SizedBox(height: 12),
           Text(
@@ -429,6 +409,9 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
 
 // ===================== 查询 Tab =====================
 
+/// 查询结果排序方式：匹配度（搜索默认顺序）/ 修改时间（新→旧）。
+enum _QuerySort { relevance, timeDesc }
+
 class _QueryTab extends StatefulWidget {
   const _QueryTab();
 
@@ -440,6 +423,7 @@ class _QueryTabState extends State<_QueryTab> {
   final _ctrl = TextEditingController();
   QueryResult? _result;
   String? _emptyMessage;
+  _QuerySort _querySort = _QuerySort.relevance;
   // 自动补全：输入时按已有网站名实时筛出包含该串的网站，点击即查询。
   List<String> _suggestions = const [];
   late final _index = context.read<AppState>().vault.index;
@@ -465,7 +449,7 @@ class _QueryTabState extends State<_QueryTab> {
   void _doQuery() {
     final app = context.read<AppState>();
     final l10n = AppLocalizations.of(context)!;
-    final r = app.vault.query(_ctrl.text.trim(), app.masterKey, app.settings.searchConfig);
+    final r = app.vault.query(_ctrl.text.trim(), app.cipher, app.settings.searchConfig);
     setState(() {
       _result = r;
       _emptyMessage = r.invalidKey
@@ -556,12 +540,56 @@ class _QueryTabState extends State<_QueryTab> {
           ),
           const SizedBox(height: 12),
           if (_suggestions.isNotEmpty) _buildSuggestions(),
+          // 多个结果时给出排序方式：匹配度 / 修改时间。
+          if (_result != null && _result!.entries.length > 1)
+            _buildQuerySortBar(l10n),
           Expanded(
             child: _buildBody(),
           ),
         ],
       ),
     );
+  }
+
+  String _querySortLabel(AppLocalizations l10n, _QuerySort s) =>
+      s == _QuerySort.relevance ? l10n.sortRelevance : l10n.sortTimeDesc;
+
+  Widget _buildQuerySortBar(AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          const Spacer(),
+          PopupMenuButton<_QuerySort>(
+            initialValue: _querySort,
+            tooltip: l10n.sortTooltip,
+            onSelected: (v) => setState(() => _querySort = v),
+            itemBuilder: (_) => [
+              for (final s in _QuerySort.values)
+                PopupMenuItem(value: s, child: Text(_querySortLabel(l10n, s))),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.sort, size: 18),
+                  const SizedBox(width: 4),
+                  Text(_querySortLabel(l10n, _querySort)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 按当前排序方式整理查询结果。匹配度即搜索原始顺序。
+  List<PasswordEntry> _sortedEntries(List<PasswordEntry> entries) {
+    if (_querySort == _QuerySort.relevance) return entries;
+    return List.of(entries)
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
   }
 
   Widget _buildBody() {
@@ -573,11 +601,12 @@ class _QueryTabState extends State<_QueryTab> {
     if (_emptyMessage != null) {
       return Center(child: Text(_emptyMessage!));
     }
+    final entries = _sortedEntries(_result!.entries);
     return ListView.separated(
-      itemCount: _result!.entries.length,
+      itemCount: entries.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (_, i) => _PasswordCard(
-        entry: _result!.entries[i],
+        entry: entries[i],
         onChanged: _doQuery,
       ),
     );
@@ -662,8 +691,7 @@ class _PasswordCardState extends State<_PasswordCard> {
                 // 点击密码横条即复制密码（无论是否处于隐藏状态，复制的都是真实密码）。
                 Expanded(
                   child: _CopyBar(
-                    onTap: () =>
-                        _copy(widget.entry.password, l10n.passwordCopied),
+                    onTap: _copyPasswordField,
                     child: Text(
                       _show ? widget.entry.password : '•' * 12,
                       style: const TextStyle(fontFamily: 'monospace'),
@@ -683,8 +711,7 @@ class _PasswordCardState extends State<_PasswordCard> {
                 IconButton(
                   tooltip: l10n.copyPassword,
                   icon: const Icon(Icons.copy, size: 18),
-                  onPressed: () =>
-                      _copy(widget.entry.password, l10n.passwordCopied),
+                  onPressed: _copyPasswordField,
                 ),
               ],
             ),
@@ -699,6 +726,13 @@ class _PasswordCardState extends State<_PasswordCard> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
     );
+  }
+
+  /// 复制密码并累加复制次数（用于“最常用”排序）。
+  void _copyPasswordField() {
+    final app = context.read<AppState>();
+    unawaited(app.settings.bumpCopyCount(widget.entry.id));
+    _copy(widget.entry.password, AppLocalizations.of(context)!.passwordCopied);
   }
 
   Future<void> _edit(BuildContext context) async {
@@ -832,7 +866,7 @@ class _AddTabState extends State<_AddTab> {
       website: w,
       username: _username.text.trim(),
       plaintextPassword: pw,
-      masterKey: app.masterKey,
+      cipher: app.cipher,
     );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -976,7 +1010,7 @@ class _AddTabState extends State<_AddTab> {
 
 // ===================== 列表 Tab =====================
 
-enum _ListSort { nameAsc, nameDesc, timeDesc, timeAsc }
+enum _ListSort { copyCountDesc, nameAsc, nameDesc, timeDesc, timeAsc }
 
 class _ListTab extends StatefulWidget {
   const _ListTab();
@@ -1012,8 +1046,16 @@ class _ListTabState extends State<_ListTab> {
         orElse: () => _ListSort.nameAsc,
       );
 
-  int _compare(LogRecord a, LogRecord b) {
+  int _compare(LogRecord a, LogRecord b, AppSettings settings) {
     switch (_sort) {
+      case _ListSort.copyCountDesc:
+        // 复制次数高的在前；相同则按名称升序。复制越多说明越常用。
+        final ca = settings.copyCount(a.id);
+        final cb = settings.copyCount(b.id);
+        if (ca != cb) return cb - ca;
+        return (a.website ?? '')
+            .toLowerCase()
+            .compareTo((b.website ?? '').toLowerCase());
       case _ListSort.nameAsc:
         return (a.website ?? '')
             .toLowerCase()
@@ -1031,6 +1073,8 @@ class _ListTabState extends State<_ListTab> {
 
   String _sortLabel(AppLocalizations l10n, _ListSort s) {
     switch (s) {
+      case _ListSort.copyCountDesc:
+        return l10n.sortCopyCountDesc;
       case _ListSort.nameAsc:
         return l10n.sortNameAsc;
       case _ListSort.nameDesc:
@@ -1047,8 +1091,9 @@ class _ListTabState extends State<_ListTab> {
     final app = context.read<AppState>();
     final l10n = AppLocalizations.of(context)!;
     try {
-      final pw = app.vault.index.decryptPassword(r, app.masterKey);
+      final pw = app.vault.index.decryptPassword(r, app.cipher);
       Clipboard.setData(ClipboardData(text: pw));
+      unawaited(app.settings.bumpCopyCount(r.id)); // 统计复制次数（最常用排序）
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.passwordCopied),
@@ -1074,7 +1119,7 @@ class _ListTabState extends State<_ListTab> {
               id: r.id,
               website: r.website ?? '',
               username: r.username ?? '',
-              password: app.vault.index.decryptPassword(r, app.masterKey),
+              password: app.vault.index.decryptPassword(r, app.cipher),
               updatedAt: r.ts,
             );
             return EditPasswordPage(existing: entry);
@@ -1101,9 +1146,11 @@ class _ListTabState extends State<_ListTab> {
   @override
   Widget build(BuildContext context) {
     final app = context.read<AppState>();
+    // watch：复制次数变化 / 排序方式变化时即时重排。
+    final settings = context.watch<AppSettings>();
     final l10n = AppLocalizations.of(context)!;
     final records = app.vault.index.activeRecords.toList(growable: false)
-      ..sort(_compare);
+      ..sort((a, b) => _compare(a, b, settings));
 
     if (records.isEmpty) {
       return Center(child: Text(l10n.emptyVault));
@@ -1156,10 +1203,22 @@ class _ListTabState extends State<_ListTab> {
               final r = records[i];
               return Card(
                 child: ListTile(
+                  isThreeLine: true,
                   leading: const Icon(Icons.lock_outline),
                   title: Text(r.website ?? ''),
-                  subtitle: Text(
-                    (r.username ?? '').isEmpty ? l10n.noUsername : r.username!,
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        (r.username ?? '').isEmpty
+                            ? l10n.noUsername
+                            : r.username!,
+                      ),
+                      Text(
+                        l10n.listModifiedAt(_fmtDateTime(r.ts)),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                   ),
                   onTap: () => _copyPassword(r),
                   trailing: IconButton(
@@ -1221,7 +1280,7 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
       website: _website.text.trim(),
       username: _username.text.trim(),
       plaintextPassword: _password.text,
-      masterKey: app.masterKey,
+      cipher: app.cipher,
     );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1281,7 +1340,7 @@ class _EditPasswordPageState extends State<EditPasswordPage> {
       website: _website.text.trim(),
       username: _username.text.trim(),
       plaintextPassword: _password.text,
-      masterKey: app.masterKey,
+      cipher: app.cipher,
     );
     if (!mounted) return;
     // 未开启云同步：保存即可，无需询问推送。
@@ -1429,11 +1488,20 @@ void _showSyncResult(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 }
 
+/// 把（UTC）时间戳格式化成本地 `yyyy-MM-dd HH:mm`，用于列表展示修改时间。
+String _fmtDateTime(DateTime dt) {
+  final l = dt.toLocal();
+  String two(int x) => x.toString().padLeft(2, '0');
+  return '${l.year}-${two(l.month)}-${two(l.day)} ${two(l.hour)}:${two(l.minute)}';
+}
+
 /// 操作前提示。返回 false 表示用户取消整个操作。
 Future<bool> _maybePromptPull(BuildContext context) async {
   final app = context.read<AppState>();
   if (!app.settings.cloudEnabled) return true;
   if (!app.settings.promptBeforeEdit) return true;
+  // 已开启“进入软件自动同步”：启动时已拉取，增删改前不再提示拉取。
+  if (app.settings.autoSyncOnLaunch) return true;
   if (app.sessionSkip.skipBefore) return true;
   // 智能跳过：远端无更新且智能跳过开
   if (app.settings.smartSkip && app.sync.remoteHasUpdates == false) {

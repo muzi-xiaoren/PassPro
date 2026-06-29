@@ -286,10 +286,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sortNameDesc => 'Имя Я→А';
 
   @override
-  String get sortTimeDesc => 'Дата добавления (сначала новые)';
+  String get sortTimeDesc => 'Изменено (сначала новые)';
 
   @override
-  String get sortTimeAsc => 'Дата добавления (сначала старые)';
+  String get sortTimeAsc => 'Изменено (сначала старые)';
 
   @override
   String get sortTooltip => 'Сортировка';
@@ -629,4 +629,61 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get changeMasterKeyHint =>
       'Меняет мастер-ключ, используемый в текущем сеансе. Влияет только на последующее шифрование/расшифровку и не изменяет существующие записи.';
+
+  @override
+  String get autoSyncOnLaunch => 'Автосинхронизация при запуске';
+
+  @override
+  String get autoSyncOnLaunchSub =>
+      'Получать и объединять с удалённым при каждом запуске';
+
+  @override
+  String get sectionBackground => 'Фоновое изображение';
+
+  @override
+  String get bgChooseImage => 'Выбрать изображение';
+
+  @override
+  String get bgImageSet => 'Изображение задано — нажмите, чтобы заменить';
+
+  @override
+  String get bgNoImage => 'Фоновое изображение не задано';
+
+  @override
+  String get bgClearImage => 'Удалить изображение';
+
+  @override
+  String get bgOpacity => 'Непрозрачность';
+
+  @override
+  String get bgBlur => 'Размытие';
+
+  @override
+  String get bgFit => 'Размер';
+
+  @override
+  String get bgFitCover => 'Заполнить';
+
+  @override
+  String get bgFitContain => 'Вместить';
+
+  @override
+  String get bgFitFill => 'Растянуть';
+
+  @override
+  String get bgFitWidth => 'По ширине';
+
+  @override
+  String listModifiedAt(String time) {
+    return 'Изменено $time';
+  }
+
+  @override
+  String get mirrorSyncDone => 'Синхронизация зеркал завершена';
+
+  @override
+  String get sortCopyCountDesc => 'Часто используемые';
+
+  @override
+  String get sortRelevance => 'Релевантность';
 }

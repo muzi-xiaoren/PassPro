@@ -8,11 +8,19 @@
   "checkingUpdate": "Checking for updates…",
   "updateUpToDate": "You're on the latest version ({version})",
   "@updateUpToDate": {
-    "placeholders": { "version": { "type": "String" } }
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
   },
   "updateAvailable": "New version {version} available — tap to download",
   "@updateAvailable": {
-    "placeholders": { "version": { "type": "String" } }
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
   },
   "updateCheckFailed": "Update check failed",
   "websiteCopied": "Website copied",
@@ -29,19 +37,38 @@
   "exportCsvWarnBody": "Passwords in the CSV file are stored in cleartext and anyone can read them. Continue?",
   "exportDone": "Exported {count} records",
   "@exportDone": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "exportFailed": "Export failed: {error}",
   "@exportFailed": {
-    "placeholders": { "error": { "type": "String" } }
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "importDone": "Import complete: {added} added, {total} total",
   "@importDone": {
-    "placeholders": { "added": { "type": "int" }, "total": { "type": "int" } }
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
   },
   "importFailed": "Import failed: {error}",
   "@importFailed": {
-    "placeholders": { "error": { "type": "String" } }
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "nothingToExport": "No records to export",
   "sectionSearch": "Search rule",
@@ -80,7 +107,11 @@
   "confirmDelete": "Confirm deletion",
   "deleteBody": "Delete this record for {website}?",
   "@deleteBody": {
-    "placeholders": { "website": { "type": "String" } }
+    "placeholders": {
+      "website": {
+        "type": "String"
+      }
+    }
   },
   "cancel": "Cancel",
   "confirm": "Confirm",
@@ -103,12 +134,16 @@
   "emptyVault": "The vault is empty. Add your first entry under \"Add\".",
   "totalCount": "{count} total",
   "@totalCount": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "sortNameAsc": "Name A→Z",
   "sortNameDesc": "Name Z→A",
-  "sortTimeDesc": "Date added (newest first)",
-  "sortTimeAsc": "Date added (oldest first)",
+  "sortTimeDesc": "Modified (newest first)",
+  "sortTimeAsc": "Modified (oldest first)",
   "sortTooltip": "Sort",
   "decryptFailedCopy": "Cannot decrypt with the current master key; copy failed",
   "noUsername": "(no username)",
@@ -139,11 +174,28 @@
   "aboutRepoLabel": "Repository",
   "compactDone": "Compacted: {count} active records, saved {size}",
   "@compactDone": {
-    "placeholders": { "count": { "type": "int" }, "size": { "type": "String" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
   },
   "compactionStatus": "Now {active} active / {total} lines (amplification {amp}×)",
   "@compactionStatus": {
-    "placeholders": { "active": { "type": "int" }, "total": { "type": "int" }, "amp": { "type": "String" } }
+    "placeholders": {
+      "active": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "amp": {
+        "type": "String"
+      }
+    }
   },
   "backendDisabled": "Not enabled",
   "enable": "Enable",
@@ -153,33 +205,90 @@
   "filePath": "File path",
   "patHelper": "Stored in the OS Keychain; never written to any file",
   "syncAllBackendsPullFailed": "All backends failed to pull: {detail}",
-  "@syncAllBackendsPullFailed": { "placeholders": { "detail": { "type": "String" } } },
+  "@syncAllBackendsPullFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "syncPulledFrom": "Pulled from {backend}",
-  "@syncPulledFrom": { "placeholders": { "backend": { "type": "String" } } },
+  "@syncPulledFrom": {
+    "placeholders": {
+      "backend": {
+        "type": "String"
+      }
+    }
+  },
   "syncNoPrimary": "No usable Primary backend configured",
   "syncPrimaryOffline": "Primary offline: {detail}",
-  "@syncPrimaryOffline": { "placeholders": { "detail": { "type": "String" } } },
+  "@syncPrimaryOffline": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "syncPrimaryPushFailed": "Primary push failed: {detail}",
-  "@syncPrimaryPushFailed": { "placeholders": { "detail": { "type": "String" } } },
+  "@syncPrimaryPushFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "syncPushConflictManual": "Push conflict; auto-merge failed — please sync manually",
   "syncPushedPrimary": "Pushed to Primary",
   "syncRemoteEmptySkipped": "Remote is empty; skipped overwrite (to avoid wiping local)",
   "syncOverwroteLocalFrom": "Overwrote local from {backend}",
-  "@syncOverwroteLocalFrom": { "placeholders": { "backend": { "type": "String" } } },
+  "@syncOverwroteLocalFrom": {
+    "placeholders": {
+      "backend": {
+        "type": "String"
+      }
+    }
+  },
   "syncPrimaryOverwriteFailed": "Primary overwrite failed: {detail}",
-  "@syncPrimaryOverwriteFailed": { "placeholders": { "detail": { "type": "String" } } },
+  "@syncPrimaryOverwriteFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "syncOverwriteRemoteStillChanging": "Overwrite failed: remote keeps changing, please retry",
   "syncOverwroteRemoteWithLocal": "Overwrote remote with local",
   "syncGenericError": "Error: {detail}",
-  "@syncGenericError": { "placeholders": { "detail": { "type": "String" } } },
+  "@syncGenericError": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "syncMirrorsLabel": "Mirrors",
   "syncMirrorOk": "ok",
   "syncMirrorConflict": "conflict",
   "syncMirrorFailed": "failed",
   "syncPrimaryResult": "Primary {backend} ({outcome})",
-  "@syncPrimaryResult": { "placeholders": { "backend": { "type": "String" }, "outcome": { "type": "String" } } },
+  "@syncPrimaryResult": {
+    "placeholders": {
+      "backend": {
+        "type": "String"
+      },
+      "outcome": {
+        "type": "String"
+      }
+    }
+  },
   "repoNotFoundOrNoAccess": "Repository not found, or the token has no access: {repo}",
-  "@repoNotFoundOrNoAccess": { "placeholders": { "repo": { "type": "String" } } },
+  "@repoNotFoundOrNoAccess": {
+    "placeholders": {
+      "repo": {
+        "type": "String"
+      }
+    }
+  },
   "webdavFolderMissing": "Target folder doesn't exist. Create it in your WebDAV/Nutstore account first, and set the remote file path to match (e.g. /PassPro/passwords.log).",
   "owner": "Owner",
   "personalAccessToken": "Personal Access Token",
@@ -193,15 +302,30 @@
   "testOkNoFile": "Connected (the remote file does not exist yet; the first push will create it)",
   "testOkSha": "Connected (current sha={sha}…)",
   "@testOkSha": {
-    "placeholders": { "sha": { "type": "String" } }
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
   },
   "testFailHttp": "Failed: HTTP {code} {message}",
   "@testFailHttp": {
-    "placeholders": { "code": { "type": "String" }, "message": { "type": "String" } }
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
   },
   "testFail": "Failed: {error}",
   "@testFail": {
-    "placeholders": { "error": { "type": "String" } }
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "testConnection": "Test connection",
   "pullTitle": "Pull from remote first?",
@@ -220,11 +344,19 @@
   "syncOverwriteRemote": "Overwrite cloud with local",
   "syncOverwriteLocalConfirm": "This will overwrite local data with {file} from the cloud. Unpushed local changes will be lost. Continue?",
   "@syncOverwriteLocalConfirm": {
-    "placeholders": { "file": { "type": "String" } }
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
   },
   "syncOverwriteRemoteConfirm": "This will overwrite {file} in the cloud with your local data. The current cloud content will be replaced. Continue?",
   "@syncOverwriteRemoteConfirm": {
-    "placeholders": { "file": { "type": "String" } }
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
   },
   "continueLabel": "Continue",
   "overwroteLocal": "Local data overwritten with cloud",
@@ -235,5 +367,30 @@
   "confirmNewMasterKey": "Confirm new master key",
   "masterKeyMismatch": "The two master keys do not match",
   "masterKeyChanged": "Master key changed",
-  "changeMasterKeyHint": "Hot-swaps the master key used by the current session. It only affects encryption/decryption from now on and does not modify existing entries."
+  "changeMasterKeyHint": "Hot-swaps the master key used by the current session. It only affects encryption/decryption from now on and does not modify existing entries.",
+  "autoSyncOnLaunch": "Auto-sync on launch",
+  "autoSyncOnLaunchSub": "Pull and merge from the remote each time the app opens",
+  "sectionBackground": "Background image",
+  "bgChooseImage": "Choose image",
+  "bgImageSet": "Image set — tap to replace",
+  "bgNoImage": "No background image",
+  "bgClearImage": "Remove image",
+  "bgOpacity": "Opacity",
+  "bgBlur": "Blur",
+  "bgFit": "Size",
+  "bgFitCover": "Cover",
+  "bgFitContain": "Contain",
+  "bgFitFill": "Stretch",
+  "bgFitWidth": "Fit width",
+  "listModifiedAt": "Modified {time}",
+  "@listModifiedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "mirrorSyncDone": "Mirror sync finished",
+  "sortCopyCountDesc": "Most used",
+  "sortRelevance": "Relevance"
 }

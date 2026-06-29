@@ -1,7 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
-import '../crypto/fernet_crypto.dart';
+import '../crypto/vault_cipher.dart';
 import '../models/password_entry.dart';
 import '../models/search_config.dart';
 import 'conflict_merger.dart';
@@ -29,7 +28,7 @@ class VaultRepository {
     required String website,
     required String username,
     required String plaintextPassword,
-    required Uint8List masterKey,
+    required VaultCipher cipher,
   }) async {
     if (website.isEmpty) {
       throw ArgumentError('website 不能为空');
@@ -39,14 +38,14 @@ class VaultRepository {
     final exist = index.findByWebsiteAndUsername(website, username);
     if (exist != null) {
       try {
-        final old = FernetCrypto.decrypt(exist.encryptedPassword!, masterKey);
+        final old = cipher.decrypt(exist.encryptedPassword!);
         if (old == plaintextPassword) return false;
-      } on FernetException {
+      } on CryptoException {
         // 解不出来视为不同账户，继续走 add 路径
       }
     }
 
-    final ct = FernetCrypto.encrypt(plaintextPassword, masterKey);
+    final ct = cipher.encrypt(plaintextPassword);
     final record = LogRecord(
       op: LogOp.add,
       id: _newId(),
@@ -66,7 +65,7 @@ class VaultRepository {
     String? website,
     String? username,
     String? plaintextPassword,
-    required Uint8List masterKey,
+    required VaultCipher cipher,
   }) async {
     final current = index.get(id);
     if (current == null) {
@@ -74,7 +73,7 @@ class VaultRepository {
     }
     final newCt = plaintextPassword == null
         ? current.encryptedPassword!
-        : FernetCrypto.encrypt(plaintextPassword, masterKey);
+        : cipher.encrypt(plaintextPassword);
 
     final record = LogRecord(
       op: LogOp.update,
@@ -102,47 +101,16 @@ class VaultRepository {
     index.apply(record);
   }
 
-  /// 按网址精确删（与旧 Python delete_data 行为对齐）。
-  /// 需要主密钥能解出该网址至少一条记录，否则返回 'invalid-key'；
-  /// 未找到匹配记录返回 'not-found'。
-  Future<DeleteOutcome> deleteByWebsite(
-    String website,
-    Uint8List masterKey,
-  ) async {
-    final matches = index.activeRecords
-        .where((r) => r.website == website)
-        .toList(growable: false);
-    if (matches.isEmpty) return DeleteOutcome.notFound;
-
-    // 验主密钥：能解出任意一条就算通过
-    var keyValid = false;
-    for (final r in matches) {
-      try {
-        FernetCrypto.decrypt(r.encryptedPassword!, masterKey);
-        keyValid = true;
-        break;
-      } on FernetException {
-        continue;
-      }
-    }
-    if (!keyValid) return DeleteOutcome.invalidKey;
-
-    for (final r in matches) {
-      await deleteById(r.id);
-    }
-    return DeleteOutcome.ok;
-  }
-
   /// 查询（关键词拆分匹配 + 解密）。返回的 [PasswordEntry] 已带明文 password。
   /// 若主密钥错误，对应记录会被跳过；若全部跳过则返回空列表。
-  QueryResult query(String website, Uint8List masterKey, SearchConfig config) {
+  QueryResult query(String website, VaultCipher cipher, SearchConfig config) {
     final hits = index.search(website, config);
     if (hits.isEmpty) return const QueryResult.empty();
     final entries = <PasswordEntry>[];
     var invalidKeySeen = false;
     for (final r in hits) {
       try {
-        final pw = FernetCrypto.decrypt(r.encryptedPassword!, masterKey);
+        final pw = cipher.decrypt(r.encryptedPassword!);
         entries.add(PasswordEntry(
           id: r.id,
           website: r.website ?? '',
@@ -150,7 +118,7 @@ class VaultRepository {
           password: pw,
           updatedAt: r.ts,
         ));
-      } on FernetException {
+      } on CryptoException {
         invalidKeySeen = true;
       }
     }
@@ -194,15 +162,15 @@ class VaultRepository {
 
   /// 把当前库导成明文 CSV（首行表头）。无法用当前主密钥解出的记录会被跳过。
   /// 返回 CSV 文本与实际导出的条数。
-  ({String csv, int count}) exportCsv(Uint8List masterKey) {
+  ({String csv, int count}) exportCsv(VaultCipher cipher) {
     final rows = <List<String>>[
       ['website', 'username', 'password'],
     ];
     for (final r in index.activeRecords) {
       String pw;
       try {
-        pw = index.decryptPassword(r, masterKey);
-      } on FernetException {
+        pw = index.decryptPassword(r, cipher);
+      } on CryptoException {
         continue; // 当前主密钥解不出来的记录跳过
       }
       rows.add([r.website ?? '', r.username ?? '', pw]);
@@ -212,7 +180,7 @@ class VaultRepository {
 
   /// 从明文 CSV 导入：按 网站,账号,密码 三列读取，逐条用当前主密钥加密入库。
   /// 自动跳过表头行与空行；与现有完全相同的条目（去重）不重复计数。
-  Future<ImportResult> importCsv(String text, Uint8List masterKey) async {
+  Future<ImportResult> importCsv(String text, VaultCipher cipher) async {
     final rows = decodeCsv(text);
     var added = 0;
     var headerChecked = false;
@@ -230,7 +198,7 @@ class VaultRepository {
         website: website,
         username: username,
         plaintextPassword: password,
-        masterKey: masterKey,
+        cipher: cipher,
       );
       if (ok) added++;
     }
@@ -249,8 +217,6 @@ class VaultRepository {
     return '$ts-${rnd.toRadixString(36)}';
   }
 }
-
-enum DeleteOutcome { ok, notFound, invalidKey }
 
 /// 导入结果：本次新增的条数与合并/入库后的总条数。
 class ImportResult {

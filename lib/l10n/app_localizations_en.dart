@@ -284,10 +284,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sortNameDesc => 'Name Z→A';
 
   @override
-  String get sortTimeDesc => 'Date added (newest first)';
+  String get sortTimeDesc => 'Modified (newest first)';
 
   @override
-  String get sortTimeAsc => 'Date added (oldest first)';
+  String get sortTimeAsc => 'Modified (oldest first)';
 
   @override
   String get sortTooltip => 'Sort';
@@ -626,4 +626,61 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get changeMasterKeyHint =>
       'Hot-swaps the master key used by the current session. It only affects encryption/decryption from now on and does not modify existing entries.';
+
+  @override
+  String get autoSyncOnLaunch => 'Auto-sync on launch';
+
+  @override
+  String get autoSyncOnLaunchSub =>
+      'Pull and merge from the remote each time the app opens';
+
+  @override
+  String get sectionBackground => 'Background image';
+
+  @override
+  String get bgChooseImage => 'Choose image';
+
+  @override
+  String get bgImageSet => 'Image set — tap to replace';
+
+  @override
+  String get bgNoImage => 'No background image';
+
+  @override
+  String get bgClearImage => 'Remove image';
+
+  @override
+  String get bgOpacity => 'Opacity';
+
+  @override
+  String get bgBlur => 'Blur';
+
+  @override
+  String get bgFit => 'Size';
+
+  @override
+  String get bgFitCover => 'Cover';
+
+  @override
+  String get bgFitContain => 'Contain';
+
+  @override
+  String get bgFitFill => 'Stretch';
+
+  @override
+  String get bgFitWidth => 'Fit width';
+
+  @override
+  String listModifiedAt(String time) {
+    return 'Modified $time';
+  }
+
+  @override
+  String get mirrorSyncDone => 'Mirror sync finished';
+
+  @override
+  String get sortCopyCountDesc => 'Most used';
+
+  @override
+  String get sortRelevance => 'Relevance';
 }

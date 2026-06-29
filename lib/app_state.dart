@@ -1,8 +1,6 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 
-import 'crypto/fernet_crypto.dart';
+import 'crypto/vault_cipher.dart';
 import 'settings/app_settings.dart';
 import 'settings/secure_credential_store.dart';
 import 'storage/compactor.dart';
@@ -27,35 +25,31 @@ class AppState extends ChangeNotifier {
   final Compactor compactor;
   final SessionPromptSkip sessionSkip = SessionPromptSkip();
 
-  Uint8List? _masterKey;
-  String? _masterPasswordDisplay; // 仅供主界面顶部回显
+  VaultCipher? _cipher;
 
-  bool get isUnlocked => _masterKey != null;
-  Uint8List get masterKey {
-    final k = _masterKey;
-    if (k == null) throw StateError('未解锁');
-    return k;
+  bool get isUnlocked => _cipher != null;
+
+  /// 当前会话的加解密器；未解锁时抛错。
+  VaultCipher get cipher {
+    final c = _cipher;
+    if (c == null) throw StateError('未解锁');
+    return c;
   }
 
-  String get masterPasswordDisplay => _masterPasswordDisplay ?? '';
-
   void unlock(String masterPassword) {
-    _masterPasswordDisplay = masterPassword;
-    _masterKey = FernetCrypto.deriveKey(masterPassword);
+    _cipher = VaultCipher(masterPassword);
     notifyListeners();
   }
 
   /// 热更换当前会话使用的主密钥（不重新加密已有条目）。
   /// 仅影响之后的加密/解密：之前用旧密钥写入的条目仍需旧密钥才能解密。
   void rekey(String newMasterPassword) {
-    _masterPasswordDisplay = newMasterPassword;
-    _masterKey = FernetCrypto.deriveKey(newMasterPassword);
+    _cipher = VaultCipher(newMasterPassword);
     notifyListeners();
   }
 
   void lock() {
-    _masterKey = null;
-    _masterPasswordDisplay = null;
+    _cipher = null;
     notifyListeners();
   }
 }

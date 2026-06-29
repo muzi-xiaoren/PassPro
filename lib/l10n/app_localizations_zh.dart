@@ -274,10 +274,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sortNameDesc => '名称 Z→A';
 
   @override
-  String get sortTimeDesc => '加入时间（新→旧）';
+  String get sortTimeDesc => '修改时间（新→旧）';
 
   @override
-  String get sortTimeAsc => '加入时间（旧→新）';
+  String get sortTimeAsc => '修改时间（旧→新）';
 
   @override
   String get sortTooltip => '排序';
@@ -603,4 +603,60 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get changeMasterKeyHint => '热更换当前会话使用的主密钥，仅影响之后的加密/解密，不会改动已有条目。';
+
+  @override
+  String get autoSyncOnLaunch => '进入软件时自动同步';
+
+  @override
+  String get autoSyncOnLaunchSub => '每次打开应用时自动从远端拉取合并';
+
+  @override
+  String get sectionBackground => '背景图';
+
+  @override
+  String get bgChooseImage => '选择图片';
+
+  @override
+  String get bgImageSet => '已设置，点按可更换';
+
+  @override
+  String get bgNoImage => '未设置背景图';
+
+  @override
+  String get bgClearImage => '移除图片';
+
+  @override
+  String get bgOpacity => '透明度';
+
+  @override
+  String get bgBlur => '模糊度';
+
+  @override
+  String get bgFit => '大小';
+
+  @override
+  String get bgFitCover => '填满';
+
+  @override
+  String get bgFitContain => '适应';
+
+  @override
+  String get bgFitFill => '拉伸';
+
+  @override
+  String get bgFitWidth => '适应宽度';
+
+  @override
+  String listModifiedAt(String time) {
+    return '修改于 $time';
+  }
+
+  @override
+  String get mirrorSyncDone => '副仓库同步完成';
+
+  @override
+  String get sortCopyCountDesc => '最常用';
+
+  @override
+  String get sortRelevance => '匹配度';
 }

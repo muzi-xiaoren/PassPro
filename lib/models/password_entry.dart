@@ -38,7 +38,7 @@ class PasswordEntry {
 ///   {"op":"ADD","id":"...","ts":1715000000,"w":"github.com","u":"alice","p":"<fernet-ct>"}
 ///   {"op":"DEL","id":"...","ts":1715000001}
 ///
-/// 设计取舍：website/username 第一版保持明文（与旧 Python 文件兼容），密码字段为 Fernet 密文。
+/// 设计取舍：website/username 保持明文（便于 git diff 与冲突合并），密码字段为密文。
 enum LogOp { add, update, delete }
 
 class LogRecord {

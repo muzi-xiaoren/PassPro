@@ -275,10 +275,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get sortNameDesc => '名前 Z→A';
 
   @override
-  String get sortTimeDesc => '追加日時（新しい順）';
+  String get sortTimeDesc => '更新日時（新しい順）';
 
   @override
-  String get sortTimeAsc => '追加日時（古い順）';
+  String get sortTimeAsc => '更新日時（古い順）';
 
   @override
   String get sortTooltip => '並べ替え';
@@ -608,4 +608,60 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get changeMasterKeyHint =>
       '現在のセッションで使用するマスターキーを切り替えます。以降の暗号化/復号にのみ影響し、既存のエントリは変更されません。';
+
+  @override
+  String get autoSyncOnLaunch => '起動時に自動同期';
+
+  @override
+  String get autoSyncOnLaunchSub => 'アプリ起動時にリモートから取得してマージします';
+
+  @override
+  String get sectionBackground => '背景画像';
+
+  @override
+  String get bgChooseImage => '画像を選択';
+
+  @override
+  String get bgImageSet => '設定済み（タップで変更）';
+
+  @override
+  String get bgNoImage => '背景画像なし';
+
+  @override
+  String get bgClearImage => '画像を削除';
+
+  @override
+  String get bgOpacity => '不透明度';
+
+  @override
+  String get bgBlur => 'ぼかし';
+
+  @override
+  String get bgFit => 'サイズ';
+
+  @override
+  String get bgFitCover => '全体を覆う';
+
+  @override
+  String get bgFitContain => '全体表示';
+
+  @override
+  String get bgFitFill => '引き伸ばし';
+
+  @override
+  String get bgFitWidth => '幅に合わせる';
+
+  @override
+  String listModifiedAt(String time) {
+    return '更新 $time';
+  }
+
+  @override
+  String get mirrorSyncDone => 'ミラー同期完了';
+
+  @override
+  String get sortCopyCountDesc => 'よく使う順';
+
+  @override
+  String get sortRelevance => '関連度';
 }

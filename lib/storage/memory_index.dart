@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../crypto/fernet_crypto.dart';
+import '../crypto/vault_cipher.dart';
 import '../models/password_entry.dart';
 import '../models/search_config.dart';
 
@@ -132,13 +132,13 @@ class MemoryIndex extends ChangeNotifier {
     return aw.compareTo(bw);
   }
 
-  /// 解密密码字段；失败抛 [FernetException]（主密钥错或数据坏）。
-  String decryptPassword(LogRecord r, Uint8List masterKey) {
+  /// 解密密码字段；失败抛 [CryptoException]（主密钥错或数据坏）。
+  String decryptPassword(LogRecord r, VaultCipher cipher) {
     final ct = r.encryptedPassword;
     if (ct == null) {
-      throw const FernetException('记录无密文字段');
+      throw const CryptoException('记录无密文字段');
     }
-    return FernetCrypto.decrypt(ct, masterKey);
+    return cipher.decrypt(ct);
   }
 
   /// 给定 record_id 查找当前活记录，找不到返回 null。

@@ -1,7 +1,7 @@
 name: passpro
-description: 跨平台本地密码管理器，兼容旧 Python Fernet 加密文件，支持 GitHub/Gitee 双仓库同步。
+description: 跨平台本地密码管理器，AES-256-GCM 加密，支持 GitHub/Gitee/WebDAV 同步。
 publish_to: 'none'
-version: 1.0.3+16
+version: 1.0.4+17
 
 environment:
   sdk: ^3.4.0
@@ -11,9 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # 加密：手写 Fernet 兼容算法，仅依赖基础原语
-  crypto: ^3.0.3            # SHA-256 / HMAC
-  pointycastle: ^3.9.1      # AES-CBC + PKCS7
+  # 加密：PBKDF2-HMAC-SHA256 派生 + AES-256-GCM（lib/crypto/vault_cipher.dart）
+  crypto: ^3.0.3            # 仅迁移脚本 tools/migrate_log.dart 用（解旧 Fernet）
+  pointycastle: ^3.9.1      # PBKDF2 + AES-256-GCM
 
   # 存储 & 路径
   path: ^1.9.0

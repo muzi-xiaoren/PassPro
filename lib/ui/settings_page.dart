@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -17,7 +19,7 @@ import '../sync/sync_backend.dart';
 import '../sync/webdav_backend.dart';
 
 /// 应用版本号（关于页展示 + 检查更新比较的基准）。发版时同步改 pubspec.yaml。
-const String kAppVersion = '1.0.3';
+const String kAppVersion = '1.0.4';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -55,43 +57,65 @@ class SettingsPage extends StatelessWidget {
           ),
 
           const Divider(),
-          // ============ 搜索规则 ============
-          _SectionHeader(l10n.sectionSearch),
-          const _SearchRuleSection(),
+          // ============ 搜索规则（可下拉展开/收起） ============
+          _CollapsibleSection(
+            id: 'search',
+            title: l10n.sectionSearch,
+            children: const [_SearchRuleSection()],
+          ),
 
           const Divider(),
-          // ============ 云同步 ============
-          _SectionHeader(l10n.sectionCloudSync),
-          SwitchListTile(
-            title: Text(l10n.enableCloudSync),
-            subtitle: Text(l10n.enableCloudSyncSub),
-            value: settings.cloudEnabled,
-            onChanged: settings.setCloudEnabled,
+          // ============ 背景图（可下拉展开/收起） ============
+          _CollapsibleSection(
+            id: 'background',
+            title: l10n.sectionBackground,
+            children: const [_BackgroundSection()],
           ),
-          if (settings.cloudEnabled) ...[
-            _BackendTile(kind: BackendKind.github),
-            _BackendTile(kind: BackendKind.gitee),
-            _BackendTile(kind: BackendKind.webdav),
-            const Divider(),
-            _SectionHeader(l10n.sectionSyncPrompt),
-            SwitchListTile(
-              title: Text(l10n.promptBeforePull),
-              subtitle: Text(l10n.promptBeforePullSub),
-              value: settings.promptBeforeEdit,
-              onChanged: settings.setPromptBeforeEdit,
-            ),
-            SwitchListTile(
-              title: Text(l10n.promptAfterPush),
-              value: settings.promptAfterEdit,
-              onChanged: settings.setPromptAfterEdit,
-            ),
-            SwitchListTile(
-              title: Text(l10n.smartSkip),
-              subtitle: Text(l10n.smartSkipSub),
-              value: settings.smartSkip,
-              onChanged: settings.setSmartSkip,
-            ),
-          ],
+
+          const Divider(),
+          // ============ 云同步（可下拉展开/收起） ============
+          _CollapsibleSection(
+            id: 'cloud',
+            title: l10n.sectionCloudSync,
+            children: [
+              SwitchListTile(
+                title: Text(l10n.enableCloudSync),
+                subtitle: Text(l10n.enableCloudSyncSub),
+                value: settings.cloudEnabled,
+                onChanged: settings.setCloudEnabled,
+              ),
+              if (settings.cloudEnabled) ...[
+                SwitchListTile(
+                  title: Text(l10n.autoSyncOnLaunch),
+                  subtitle: Text(l10n.autoSyncOnLaunchSub),
+                  value: settings.autoSyncOnLaunch,
+                  onChanged: settings.setAutoSyncOnLaunch,
+                ),
+                _BackendTile(kind: BackendKind.github),
+                _BackendTile(kind: BackendKind.gitee),
+                _BackendTile(kind: BackendKind.webdav),
+                const Divider(),
+                _SectionHeader(l10n.sectionSyncPrompt),
+                SwitchListTile(
+                  title: Text(l10n.promptBeforePull),
+                  subtitle: Text(l10n.promptBeforePullSub),
+                  value: settings.promptBeforeEdit,
+                  onChanged: settings.setPromptBeforeEdit,
+                ),
+                SwitchListTile(
+                  title: Text(l10n.promptAfterPush),
+                  value: settings.promptAfterEdit,
+                  onChanged: settings.setPromptAfterEdit,
+                ),
+                SwitchListTile(
+                  title: Text(l10n.smartSkip),
+                  subtitle: Text(l10n.smartSkipSub),
+                  value: settings.smartSkip,
+                  onChanged: settings.setSmartSkip,
+                ),
+              ],
+            ],
+          ),
 
           const Divider(),
           // ============ 维护 ============
@@ -104,31 +128,36 @@ class SettingsPage extends StatelessWidget {
           ),
 
           const Divider(),
-          // ============ 本地备份（导入 / 导出） ============
-          _SectionHeader(l10n.sectionBackup),
-          ListTile(
-            leading: const Icon(Icons.upload_file_outlined),
-            title: Text(l10n.exportBackup),
-            subtitle: Text(l10n.exportBackupSub),
-            onTap: () => _exportLog(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.download_outlined),
-            title: Text(l10n.importBackup),
-            subtitle: Text(l10n.importBackupSub),
-            onTap: () => _importLog(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.table_view_outlined),
-            title: Text(l10n.exportCsvTitle),
-            subtitle: Text(l10n.exportCsvSub),
-            onTap: () => _exportCsv(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.file_open_outlined),
-            title: Text(l10n.importCsvTitle),
-            subtitle: Text(l10n.importCsvSub),
-            onTap: () => _importCsv(context),
+          // ============ 本地备份（可下拉展开/收起） ============
+          _CollapsibleSection(
+            id: 'backup',
+            title: l10n.sectionBackup,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.upload_file_outlined),
+                title: Text(l10n.exportBackup),
+                subtitle: Text(l10n.exportBackupSub),
+                onTap: () => _exportLog(context),
+              ),
+              ListTile(
+                leading: const Icon(Icons.download_outlined),
+                title: Text(l10n.importBackup),
+                subtitle: Text(l10n.importBackupSub),
+                onTap: () => _importLog(context),
+              ),
+              ListTile(
+                leading: const Icon(Icons.table_view_outlined),
+                title: Text(l10n.exportCsvTitle),
+                subtitle: Text(l10n.exportCsvSub),
+                onTap: () => _exportCsv(context),
+              ),
+              ListTile(
+                leading: const Icon(Icons.file_open_outlined),
+                title: Text(l10n.importCsvTitle),
+                subtitle: Text(l10n.importCsvSub),
+                onTap: () => _importCsv(context),
+              ),
+            ],
           ),
 
           const Divider(),
@@ -233,7 +262,7 @@ class SettingsPage extends StatelessWidget {
     );
     if (confirmed != true) return;
     try {
-      final out = app.vault.exportCsv(app.masterKey);
+      final out = app.vault.exportCsv(app.cipher);
       if (out.count == 0) {
         messenger.showSnackBar(SnackBar(content: Text(l10n.nothingToExport)));
         return;
@@ -262,7 +291,7 @@ class SettingsPage extends StatelessWidget {
       if (bytes == null) return;
       var text = utf8.decode(bytes, allowMalformed: true);
       if (text.startsWith('\u{FEFF}')) text = text.substring(1); // 去掉 BOM
-      final r = await app.vault.importCsv(text, app.masterKey);
+      final r = await app.vault.importCsv(text, app.cipher);
       messenger.showSnackBar(
           SnackBar(content: Text(l10n.importDone(r.added, r.total))));
     } catch (e) {
@@ -326,6 +355,182 @@ class _SectionHeader extends StatelessWidget {
             ),
       ),
     );
+  }
+}
+
+/// 可下拉展开/收起的设置分区；展开状态按 [id] 持久化记忆。
+class _CollapsibleSection extends StatelessWidget {
+  const _CollapsibleSection({
+    required this.id,
+    required this.title,
+    required this.children,
+  });
+
+  final String id;
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.read<AppSettings>();
+    final theme = Theme.of(context);
+    return Theme(
+      // 去掉 ExpansionTile 自带的上下分隔线，外观更接近原来的分区标题。
+      data: theme.copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        key: PageStorageKey<String>('section_$id'),
+        initiallyExpanded: settings.sectionExpanded(id),
+        onExpansionChanged: (v) => settings.setSectionExpanded(id, v),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+        childrenPadding: EdgeInsets.zero,
+        title: Text(
+          title,
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        children: children,
+      ),
+    );
+  }
+}
+
+// ============ 背景图设置（图片 + 透明度 + 模糊度 + 大小） ============
+
+class _BackgroundSection extends StatelessWidget {
+  const _BackgroundSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.watch<AppSettings>();
+    final has = settings.hasBackground;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          leading: const Icon(Icons.image_outlined),
+          title: Text(l10n.bgChooseImage),
+          subtitle: Text(has ? l10n.bgImageSet : l10n.bgNoImage),
+          trailing: has
+              ? IconButton(
+                  tooltip: l10n.bgClearImage,
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => _clear(context),
+                )
+              : null,
+          onTap: () => _pick(context),
+        ),
+        if (has) ...[
+          _slider(
+            context,
+            l10n.bgOpacity,
+            settings.backgroundOpacity,
+            0,
+            1,
+            (v) => settings.setBackgroundOpacity(v),
+          ),
+          _slider(
+            context,
+            l10n.bgBlur,
+            settings.backgroundBlur,
+            0,
+            20,
+            (v) => settings.setBackgroundBlur(v),
+          ),
+          ListTile(
+            title: Text(l10n.bgFit),
+            trailing: DropdownButton<String>(
+              value: settings.backgroundFit,
+              underline: const SizedBox.shrink(),
+              onChanged: (v) {
+                if (v != null) settings.setBackgroundFit(v);
+              },
+              items: [
+                DropdownMenuItem(value: 'cover', child: Text(l10n.bgFitCover)),
+                DropdownMenuItem(
+                    value: 'contain', child: Text(l10n.bgFitContain)),
+                DropdownMenuItem(value: 'fill', child: Text(l10n.bgFitFill)),
+                DropdownMenuItem(
+                    value: 'fitWidth', child: Text(l10n.bgFitWidth)),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _slider(
+    BuildContext context,
+    String label,
+    double value,
+    double min,
+    double max,
+    ValueChanged<double> onChanged,
+  ) {
+    final v = value.clamp(min, max);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          SizedBox(width: 64, child: Text(label)),
+          Expanded(
+            child: Slider(
+              value: v,
+              min: min,
+              max: max,
+              onChanged: onChanged,
+            ),
+          ),
+          SizedBox(
+            width: 40,
+            child: Text(
+              max <= 1 ? v.toStringAsFixed(2) : v.toStringAsFixed(0),
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pick(BuildContext context) async {
+    final settings = context.read<AppSettings>();
+    final res = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
+    if (res == null || res.files.isEmpty) return;
+    final f = res.files.single;
+    final bytes = f.bytes ??
+        (f.path != null ? await File(f.path!).readAsBytes() : null);
+    if (bytes == null) return;
+    final dir = await getApplicationSupportDirectory();
+    // 用唯一文件名避免 Flutter 图片缓存命中旧图；写入后清掉旧背景文件。
+    final dest = File(p.join(dir.path, 'PassPro',
+        'bg-${DateTime.now().millisecondsSinceEpoch}.img'));
+    await dest.parent.create(recursive: true);
+    await dest.writeAsBytes(bytes);
+    final old = settings.backgroundPath;
+    await settings.setBackgroundPath(dest.path);
+    if (old.isNotEmpty && old != dest.path) {
+      try {
+        await File(old).delete();
+      } catch (_) {/* 旧文件删不掉无所谓 */}
+    }
+  }
+
+  Future<void> _clear(BuildContext context) async {
+    final settings = context.read<AppSettings>();
+    final old = settings.backgroundPath;
+    await settings.setBackgroundPath('');
+    if (old.isNotEmpty) {
+      try {
+        await File(old).delete();
+      } catch (_) {}
+    }
   }
 }
 
