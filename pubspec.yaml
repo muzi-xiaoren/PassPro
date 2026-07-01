@@ -1,7 +1,7 @@
 name: passpro
 description: 跨平台本地密码管理器，AES-256-GCM 加密，支持 GitHub/Gitee/WebDAV 同步。
 publish_to: 'none'
-version: 1.0.4+17
+version: 1.0.5+18
 
 environment:
   sdk: ^3.4.0
@@ -12,7 +12,6 @@ dependencies:
     sdk: flutter
 
   # 加密：PBKDF2-HMAC-SHA256 派生 + AES-256-GCM（lib/crypto/vault_cipher.dart）
-  crypto: ^3.0.3            # 仅迁移脚本 tools/migrate_log.dart 用（解旧 Fernet）
   pointycastle: ^3.9.1      # PBKDF2 + AES-256-GCM
 
   # 存储 & 路径

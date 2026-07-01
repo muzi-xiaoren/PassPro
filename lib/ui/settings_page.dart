@@ -19,7 +19,7 @@ import '../sync/sync_backend.dart';
 import '../sync/webdav_backend.dart';
 
 /// 应用版本号（关于页展示 + 检查更新比较的基准）。发版时同步改 pubspec.yaml。
-const String kAppVersion = '1.0.4';
+const String kAppVersion = '1.0.5';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
