@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'crypto/vault_cipher.dart';
@@ -37,8 +39,25 @@ class AppState extends ChangeNotifier {
   }
 
   void unlock(String masterPassword) {
-    _cipher = VaultCipher(masterPassword);
+    final c = VaultCipher(masterPassword);
+    _cipher = c;
     notifyListeners();
+    // 后台预热各盐对应的密钥，避免解锁后前几次复制卡在 PBKDF2 上。
+    _warmUpKeys(c);
+  }
+
+  /// 枚举库里所有密文用到的（盐, 迭代次数），在后台 isolate 里一次性派生好密钥。
+  /// 纯优化，失败静默忽略（按需派生的老路径仍可用）。
+  void _warmUpKeys(VaultCipher c) {
+    final params = <({Uint8List salt, int iterations})>[];
+    for (final r in vault.index.activeRecords) {
+      final ct = r.encryptedPassword;
+      if (ct == null) continue;
+      final tp = VaultCipher.tokenParams(ct);
+      if (tp != null) params.add(tp);
+    }
+    if (params.isEmpty) return;
+    unawaited(c.warmUp(params).catchError((_) {}));
   }
 
   /// 热更换当前会话使用的主密钥（不重新加密已有条目）。

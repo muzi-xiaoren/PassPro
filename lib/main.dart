@@ -75,10 +75,17 @@ class PassProApp extends StatelessWidget {
         brightness: brightness,
       ),
     );
-    // 设了背景图时让脚手架背景透明，壁纸才能透出来。
-    return transparentScaffold
-        ? base.copyWith(scaffoldBackgroundColor: Colors.transparent)
-        : base;
+    if (!transparentScaffold) return base;
+    // 设了背景图时让脚手架背景透明，壁纸才能透出来；
+    // 但输入框默认无填充是透明的，壁纸会直接透进框里，云同步等表单会显示成
+    // 一片灰。给输入框补一层不透明填充，保证文字在壁纸上清晰可读。
+    return base.copyWith(
+      scaffoldBackgroundColor: Colors.transparent,
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: base.colorScheme.surfaceContainerHighest,
+      ),
+    );
   }
 
   @override

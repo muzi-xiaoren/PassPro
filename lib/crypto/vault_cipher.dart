@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -35,15 +36,70 @@ class VaultCipher {
   /// 已派生密钥缓存：'<saltBase64>|<iter>' → 32 字节密钥。
   final Map<String, Uint8List> _keyCache = {};
 
+  static String _cacheKeyFor(Uint8List salt, int iterations) =>
+      '${base64Url.encode(salt)}|$iterations';
+
   Uint8List _deriveKey(Uint8List salt, int iterations) {
-    final cacheKey = '${base64Url.encode(salt)}|$iterations';
-    final cached = _keyCache[cacheKey];
-    if (cached != null) return cached;
+    final cacheKey = _cacheKeyFor(salt, iterations);
+    return _keyCache[cacheKey] ??=
+        _pbkdf2(_password, salt, iterations);
+  }
+
+  /// 纯函数版 PBKDF2（无实例状态），供实例方法与后台 isolate 共用。
+  static Uint8List _pbkdf2(String password, Uint8List salt, int iterations) {
     final kdf = PBKDF2KeyDerivator(HMac(SHA256Digest(), 64))
       ..init(Pbkdf2Parameters(salt, iterations, 32));
-    final key = kdf.process(Uint8List.fromList(utf8.encode(_password)));
-    _keyCache[cacheKey] = key;
-    return key;
+    return kdf.process(Uint8List.fromList(utf8.encode(password)));
+  }
+
+  /// 后台预热：在独立 isolate 里把 [params] 里各不同盐对应的密钥派生好并写入缓存，
+  /// 使随后的 [decrypt] 直接命中缓存、不再阻塞 UI 线程。
+  ///
+  /// 单条 token 各自带盐，同一会话里往往有若干个不同的盐（迁移批次 + 各次新增），
+  /// 每个盐首次解密都要跑一次 ~100ms 的 PBKDF2；解锁后调用本方法一次性预热，
+  /// 即可消除"进入软件后前几次复制明显卡顿"的问题。
+  Future<void> warmUp(Iterable<({Uint8List salt, int iterations})> params) async {
+    final pending = <({Uint8List salt, int iterations, String cacheKey})>[];
+    final seen = <String>{};
+    for (final p in params) {
+      final ck = _cacheKeyFor(p.salt, p.iterations);
+      if (_keyCache.containsKey(ck) || !seen.add(ck)) continue;
+      pending.add((salt: p.salt, iterations: p.iterations, cacheKey: ck));
+    }
+    if (pending.isEmpty) return;
+    final password = _password;
+    final derived = await Isolate.run(() => [
+          for (final p in pending)
+            (
+              cacheKey: p.cacheKey,
+              key: _pbkdf2(password, p.salt, p.iterations),
+            ),
+        ]);
+    for (final d in derived) {
+      _keyCache[d.cacheKey] = d.key;
+    }
+  }
+
+  /// 从 token 里解析出（盐, 迭代次数），用于 [warmUp] 枚举所有需要预热的盐。
+  /// 非本格式（旧数据/坏数据）返回 null。
+  static ({Uint8List salt, int iterations})? tokenParams(String token) {
+    try {
+      final data = base64Url.decode(_padBase64(token));
+      if (data.length < 1 + 1 + 4 + 1 + _saltLen + _nonceLen + 16) return null;
+      if (data[0] != _version) return null;
+      var o = 1;
+      if (data[o++] != _kdfPbkdf2Sha256) return null;
+      final iterations = _readU32be(data, o);
+      o += 4;
+      final saltLen = data[o++];
+      if (o + saltLen > data.length) return null;
+      return (
+        salt: Uint8List.fromList(data.sublist(o, o + saltLen)),
+        iterations: iterations,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   /// 加密明文，返回 base64url token（始终用最新格式）。

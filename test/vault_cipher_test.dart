@@ -46,5 +46,30 @@ void main() {
       expect(() => c.decrypt('not-base64-!!!'), throwsA(isA<CryptoException>()));
       expect(() => c.decrypt('AAAA'), throwsA(isA<CryptoException>()));
     });
+
+    test('tokenParams 解析出盐/迭代，非法 token 返回 null', () {
+      final c = VaultCipher('k');
+      final token = c.encrypt('x');
+      final tp = VaultCipher.tokenParams(token);
+      expect(tp, isNotNull);
+      expect(tp!.iterations, 100000);
+      expect(tp.salt.length, 16);
+      expect(VaultCipher.tokenParams('not-base64-!!!'), isNull);
+      expect(VaultCipher.tokenParams('AAAA'), isNull);
+    });
+
+    test('warmUp 预热后仍能正确解密（后台 isolate 派生密钥）', () async {
+      final c = VaultCipher('warm-master');
+      final t1 = c.encrypt('one');
+      // 用另一个实例造一个不同盐的 token，模拟库里多批次不同盐。
+      final other = VaultCipher('warm-master');
+      final t2 = other.encrypt('two');
+      await c.warmUp([
+        VaultCipher.tokenParams(t1)!,
+        VaultCipher.tokenParams(t2)!,
+      ]);
+      expect(c.decrypt(t1), 'one');
+      expect(c.decrypt(t2), 'two');
+    });
   });
 }
