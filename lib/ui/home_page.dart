@@ -1087,11 +1087,13 @@ class _ListTabState extends State<_ListTab> {
   }
 
   /// 点击条目区域：主密钥可解密则直接复制密码到剪贴板，否则提示。
-  void _copyPassword(LogRecord r) {
+  /// 解密走异步版：密钥未缓存时后台派生，不会卡住点击帧。
+  Future<void> _copyPassword(LogRecord r) async {
     final app = context.read<AppState>();
     final l10n = AppLocalizations.of(context)!;
     try {
-      final pw = app.vault.index.decryptPassword(r, app.cipher);
+      final pw = await app.vault.index.decryptPasswordAsync(r, app.cipher);
+      if (!mounted) return;
       Clipboard.setData(ClipboardData(text: pw));
       unawaited(app.settings.bumpCopyCount(r.id)); // 统计复制次数（最常用排序）
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1101,6 +1103,7 @@ class _ListTabState extends State<_ListTab> {
         ),
       );
     } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.decryptFailedCopy)),
       );
@@ -1108,35 +1111,43 @@ class _ListTabState extends State<_ListTab> {
   }
 
   /// 打开详情/编辑页；主密钥错误时进入带返回按钮的提示页（macOS 也能返回）。
+  /// 解密放在 push 之前完成——原先在路由 builder 里同步解密，
+  /// 密钥未缓存时 PBKDF2 会把转场动画整帧冻住。
   Future<void> _openDetail(LogRecord r) async {
     final app = context.read<AppState>();
     final l10n = AppLocalizations.of(context)!;
+    PasswordEntry? entry;
+    try {
+      entry = PasswordEntry(
+        id: r.id,
+        website: r.website ?? '',
+        username: r.username ?? '',
+        password: await app.vault.index.decryptPasswordAsync(r, app.cipher),
+        updatedAt: r.ts,
+      );
+    } catch (_) {
+      entry = null;
+    }
+    if (!mounted) return;
+    final ready = entry;
     final ok = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) {
-          try {
-            final entry = PasswordEntry(
-              id: r.id,
-              website: r.website ?? '',
-              username: r.username ?? '',
-              password: app.vault.index.decryptPassword(r, app.cipher),
-              updatedAt: r.ts,
-            );
-            return EditPasswordPage(existing: entry);
-          } catch (_) {
-            return Scaffold(
-              appBar: AppBar(title: Text(l10n.cannotDecrypt)),
-              body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    l10n.cannotDecryptBody,
-                    textAlign: TextAlign.center,
-                  ),
+          if (ready != null) {
+            return EditPasswordPage(existing: ready);
+          }
+          return Scaffold(
+            appBar: AppBar(title: Text(l10n.cannotDecrypt)),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  l10n.cannotDecryptBody,
+                  textAlign: TextAlign.center,
                 ),
               ),
-            );
-          }
+            ),
+          );
         },
       ),
     );

@@ -28,5 +28,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<!-- Impeller 在 macOS 上局部重绘有缺陷：路由切换后残留旧页面碎片、
+	     把控件区域画成灰块（云同步表单"拥有者"灰块即此）。回退 Skia。 -->
+	<key>FLTEnableImpeller</key>
+	<false/>
 </dict>
 </plist>

@@ -141,6 +141,16 @@ class MemoryIndex extends ChangeNotifier {
     return cipher.decrypt(ct);
   }
 
+  /// [decryptPassword] 的异步版：密钥未缓存时在后台 isolate 派生，
+  /// 复制/打开详情等用户手势路径用它，UI 线程零 PBKDF2。
+  Future<String> decryptPasswordAsync(LogRecord r, VaultCipher cipher) {
+    final ct = r.encryptedPassword;
+    if (ct == null) {
+      throw const CryptoException('记录无密文字段');
+    }
+    return cipher.decryptAsync(ct);
+  }
+
   /// 给定 record_id 查找当前活记录，找不到返回 null。
   LogRecord? get(String id) => _records[id];
 

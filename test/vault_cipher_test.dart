@@ -58,6 +58,19 @@ void main() {
       expect(VaultCipher.tokenParams('AAAA'), isNull);
     });
 
+    test('decryptAsync 冷缓存时后台派生，结果与同步一致；错误密钥仍抛异常', () async {
+      final a = VaultCipher('async-master');
+      final token = a.encrypt('sec');
+      final b = VaultCipher('async-master'); // 新实例，密钥缓存为空
+      expect(await b.decryptAsync(token), 'sec');
+      expect(b.decrypt(token), 'sec'); // 派生结果已进缓存，同步路径可用
+      final wrong = VaultCipher('wrong-master');
+      await expectLater(
+        wrong.decryptAsync(token),
+        throwsA(isA<CryptoException>()),
+      );
+    });
+
     test('warmUp 预热后仍能正确解密（后台 isolate 派生密钥）', () async {
       final c = VaultCipher('warm-master');
       final t1 = c.encrypt('one');

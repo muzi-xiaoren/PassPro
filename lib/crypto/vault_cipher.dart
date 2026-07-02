@@ -80,6 +80,18 @@ class VaultCipher {
     }
   }
 
+  /// 与 [decrypt] 相同，但该 token 的密钥未缓存时先在后台 isolate 派生，
+  /// UI 线程零 PBKDF2。解锁后预热尚未完成、或重新解锁后缓存刚清空时，
+  /// 复制等用户操作走这里可保证不掉帧。
+  Future<String> decryptAsync(String token) async {
+    final params = tokenParams(token);
+    if (params != null &&
+        !_keyCache.containsKey(_cacheKeyFor(params.salt, params.iterations))) {
+      await warmUp([params]);
+    }
+    return decrypt(token);
+  }
+
   /// 从 token 里解析出（盐, 迭代次数），用于 [warmUp] 枚举所有需要预热的盐。
   /// 非本格式（旧数据/坏数据）返回 null。
   static ({Uint8List salt, int iterations})? tokenParams(String token) {
