@@ -378,7 +378,11 @@ class _CollapsibleSection extends StatelessWidget {
       // 去掉 ExpansionTile 自带的上下分隔线，外观更接近原来的分区标题。
       data: theme.copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
-        key: PageStorageKey<String>('section_$id'),
+        // 千万不要在这里加 PageStorageKey：它会激活整棵子树的 PageStorage，
+        // 内层无 key 的 ExpansionTile 写入的 bool 会与 TextField 滚动器
+        // 恢复偏移时读的 double 落在同一个存储桶，读到 bool 直接抛
+        // _TypeError → 表单全部输入框变成 10 万像素高的 ErrorWidget 灰盒。
+        // 展开状态用 settings.sectionExpanded 持久化即可（见下）。
         initiallyExpanded: settings.sectionExpanded(id),
         onExpansionChanged: (v) => settings.setSectionExpanded(id, v),
         tilePadding: const EdgeInsets.symmetric(horizontal: 16),
