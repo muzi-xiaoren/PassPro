@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import 'settings/secure_credential_store.dart';
 import 'storage/compactor.dart';
 import 'storage/vault_repository.dart';
 import 'sync/sync_manager.dart';
+import 'ui/background_image.dart';
 import 'ui/master_key_page.dart';
 
 Future<void> main() async {
@@ -119,39 +121,111 @@ class PassProApp extends StatelessWidget {
   }
 }
 
-/// 全屏背景图层：按设置的大小(填充方式)/透明度/模糊度渲染。
+/// 全屏背景图层：解码限宽 + 模糊一次性烘焙成静态纹理（见 bakeBackgroundImage），
+/// 运行期只画一张普通纹理，透明度走 RawImage 的绘制期 alpha（无 saveLayer）。
 /// 文件缺失或解码失败时静默不显示。
-class _BackgroundLayer extends StatelessWidget {
+class _BackgroundLayer extends StatefulWidget {
   const _BackgroundLayer({required this.settings});
 
   final AppSettings settings;
 
   @override
+  State<_BackgroundLayer> createState() => _BackgroundLayerState();
+}
+
+class _BackgroundLayerState extends State<_BackgroundLayer> {
+  ui.Image? _image;
+  String? _bakedKey;
+  bool _baking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ensureBaked();
+  }
+
+  @override
+  void didUpdateWidget(covariant _BackgroundLayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _ensureBaked();
+  }
+
+  /// 路径或模糊度变化时重新烘焙；拖动滑杆期间的中间值会被折叠成最后一次。
+  Future<void> _ensureBaked() async {
+    if (_baking) return;
+    _baking = true;
+    try {
+      while (mounted) {
+        final path = widget.settings.backgroundPath;
+        final blur = widget.settings.backgroundBlur;
+        final key = path.isEmpty ? '' : '$path|${blur.toStringAsFixed(3)}';
+        if (key == _bakedKey) break;
+        ui.Image? baked;
+        if (path.isNotEmpty) {
+          try {
+            final view = WidgetsBinding.instance.platformDispatcher.views.first;
+            final physW = view.physicalSize.width;
+            // 留 20% 余量应对窗口拉大；再大人眼也看不出，徒增显存与耗时。
+            final maxW =
+                physW > 0 ? math.min(3072, (physW * 1.2).round()) : 2048;
+            final logicalW =
+                physW > 0 ? physW / view.devicePixelRatio : 1280.0;
+            baked = await bakeBackgroundImage(
+              await File(path).readAsBytes(),
+              blurSigma: blur,
+              maxWidth: maxW,
+              logicalWidth: logicalW,
+            );
+          } catch (_) {
+            baked = null;
+          }
+        }
+        if (!mounted) {
+          baked?.dispose();
+          return;
+        }
+        final old = _image;
+        setState(() {
+          _image = baked;
+          _bakedKey = key;
+        });
+        if (old != null) {
+          // 等新纹理上屏后再释放旧的，避免释放仍被当前帧引用的图。
+          WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
+        }
+      }
+    } finally {
+      _baking = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    final img = _image;
+    if (img != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => img.dispose());
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final path = settings.backgroundPath;
-    if (path.isEmpty) return const SizedBox.shrink();
-    final fit = switch (settings.backgroundFit) {
+    final img = _image;
+    if (img == null) return const SizedBox.shrink();
+    final fit = switch (widget.settings.backgroundFit) {
       'contain' => BoxFit.contain,
       'fill' => BoxFit.fill,
       'fitWidth' => BoxFit.fitWidth,
       _ => BoxFit.cover,
     };
-    Widget img = Image.file(
-      File(path),
-      fit: fit,
-      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-    );
-    final blur = settings.backgroundBlur;
-    if (blur > 0) {
-      img = ImageFiltered(
-        imageFilter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: img,
-      );
-    }
     return Positioned.fill(
-      child: Opacity(
-        opacity: settings.backgroundOpacity,
-        child: img,
+      child: RepaintBoundary(
+        child: RawImage(
+          image: img,
+          fit: fit,
+          opacity: AlwaysStoppedAnimation(widget.settings.backgroundOpacity),
+          filterQuality: FilterQuality.medium,
+        ),
       ),
     );
   }
