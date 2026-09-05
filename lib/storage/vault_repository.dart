@@ -36,9 +36,10 @@ class VaultRepository {
 
     // 重复判定：同 website + username + 解出来明文一致
     final exist = index.findByWebsiteAndUsername(website, username);
-    if (exist != null) {
+    final existCt = exist?.encryptedPassword;
+    if (existCt != null && existCt.isNotEmpty) {
       try {
-        final old = cipher.decrypt(exist.encryptedPassword!);
+        final old = cipher.decrypt(existCt);
         if (old == plaintextPassword) return false;
       } on CryptoException {
         // 解不出来视为不同账户，继续走 add 路径
@@ -101,31 +102,52 @@ class VaultRepository {
     index.apply(record);
   }
 
-  /// 查询（关键词拆分匹配 + 解密）。返回的 [PasswordEntry] 已带明文 password。
-  /// 若主密钥错误，对应记录会被跳过；若全部跳过则返回空列表。
+  /// 查询（关键词拆分匹配）。返回的是**仍为密文**的命中记录，明文密码由界面
+  /// 在用户点"显示 / 复制 / 编辑"时按需解密（[MemoryIndex.decryptPasswordAsync]）。
+  ///
+  /// **同步版，只在密钥必然已缓存时使用**（测试 / 桌面脚本）。UI 一律走
+  /// [queryAsync]：密钥没缓存时探测那一下会就地跑 PBKDF2，把点击那一帧冻住。
   QueryResult query(String website, VaultCipher cipher, SearchConfig config) {
     final hits = index.search(website, config);
     if (hits.isEmpty) return const QueryResult.empty();
-    final entries = <PasswordEntry>[];
-    var invalidKeySeen = false;
+    return _probeKey(hits, cipher);
+  }
+
+  /// [query] 的异步版：命中记录用到的盐先在后台 isolate 里一次性派生好，
+  /// 之后的解密全部命中缓存，UI 线程零 PBKDF2。查询界面必须用这个。
+  Future<QueryResult> queryAsync(
+    String website,
+    VaultCipher cipher,
+    SearchConfig config,
+  ) async {
+    final hits = index.search(website, config);
+    if (hits.isEmpty) return const QueryResult.empty();
+    try {
+      await cipher
+          .warmUpForTokens([for (final r in hits) r.encryptedPassword]);
+    } catch (_) {
+      // 预热失败就退回按需派生，功能不受影响。
+    }
+    return _probeKey(hits, cipher);
+  }
+
+  /// 只解一条来判断主密钥对不对——以前是把每条命中都解开塞进结果里，
+  /// 一次查询就把全部明文摊在内存里，白跑一堆 AES-GCM。
+  /// 一条都解不开才算主密钥错误（有坏行时继续往下试）。
+  QueryResult _probeKey(List<LogRecord> hits, VaultCipher cipher) {
     for (final r in hits) {
+      final ct = r.encryptedPassword;
+      // 密文字段缺失（老数据 / 合并进来的残缺行）：以前这里是 `!`，
+      // 抛的是 TypeError 而不是 CryptoException，会直接逃出点击回调。
+      if (ct == null || ct.isEmpty) continue;
       try {
-        final pw = cipher.decrypt(r.encryptedPassword!);
-        entries.add(PasswordEntry(
-          id: r.id,
-          website: r.website ?? '',
-          username: r.username ?? '',
-          password: pw,
-          updatedAt: r.ts,
-        ));
+        cipher.decrypt(ct);
+        return QueryResult.ok(hits);
       } on CryptoException {
-        invalidKeySeen = true;
+        // 这条解不开，继续试下一条
       }
     }
-    if (entries.isEmpty && invalidKeySeen) {
-      return const QueryResult.invalidKey();
-    }
-    return QueryResult.ok(entries);
+    return const QueryResult.invalidKey();
   }
 
   // ============ 本地导入 / 导出 ============
@@ -226,16 +248,17 @@ class ImportResult {
 }
 
 class QueryResult {
-  final List<PasswordEntry> entries;
+  /// 命中的记录，密码字段仍是密文。明文按需解密，不在查询时批量摊开。
+  final List<LogRecord> records;
   final bool invalidKey;
 
-  const QueryResult.ok(this.entries) : invalidKey = false;
+  const QueryResult.ok(this.records) : invalidKey = false;
   const QueryResult.invalidKey()
-      : entries = const [],
+      : records = const [],
         invalidKey = true;
   const QueryResult.empty()
-      : entries = const [],
+      : records = const [],
         invalidKey = false;
 
-  bool get isEmpty => entries.isEmpty && !invalidKey;
+  bool get isEmpty => records.isEmpty && !invalidKey;
 }

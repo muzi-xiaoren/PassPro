@@ -15,6 +15,9 @@ class MasterKeyPage extends StatefulWidget {
 class _MasterKeyPageState extends State<MasterKeyPage> {
   final _ctrl = TextEditingController();
   late bool _obscure;
+  // 解锁要等后台把各盐的密钥派生完（~0.2s/盐，手机上更久）。
+  // 期间禁用按钮并转圈，避免用户进主界面后再撞上同步 PBKDF2。
+  bool _unlocking = false;
 
   @override
   void initState() {
@@ -29,10 +32,19 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
     super.dispose();
   }
 
-  void _unlock() {
+  Future<void> _unlock() async {
+    if (_unlocking) return;
     final pw = _ctrl.text.isEmpty ? ' ' : _ctrl.text;
-    context.read<AppState>().unlock(pw);
-    Navigator.of(context).pushReplacement(
+    final app = context.read<AppState>();
+    final navigator = Navigator.of(context);
+    setState(() => _unlocking = true);
+    try {
+      await app.unlock(pw);
+    } finally {
+      if (mounted) setState(() => _unlocking = false);
+    }
+    if (!mounted) return;
+    navigator.pushReplacement(
       MaterialPageRoute(builder: (_) => const HomePage()),
     );
   }
@@ -72,6 +84,7 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
                   controller: _ctrl,
                   obscureText: _obscure,
                   autofocus: true,
+                  enabled: !_unlocking,
                   textInputAction: TextInputAction.go,
                   onSubmitted: (_) => _unlock(),
                   decoration: InputDecoration(
@@ -93,10 +106,16 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
                 ),
                 const SizedBox(height: 16),
                 FilledButton(
-                  onPressed: _unlock,
+                  onPressed: _unlocking ? null : _unlock,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(l10n.unlock),
+                    child: _unlocking
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(l10n.unlock),
                   ),
                 ),
                 const SizedBox(height: 8),

@@ -17,16 +17,25 @@ import 'package:pointycastle/export.dart';
 /// 盐随每条 token 一起存储，因此无需任何额外的同步通道/元数据文件；
 /// 同一盐派生出的密钥会被缓存，整库通常只需一次 PBKDF2。
 class VaultCipher {
-  VaultCipher(this._password) : _writeSalt = _randomBytes(16);
+  /// [writeSalt] 为空时随机生成。调用方应传入库里已在用的盐——每个会话都随机
+  /// 生成新盐的话，库里的盐数会随使用次数无限增长，解锁预热就得跑 N 次
+  /// PBKDF2（每次 ~0.2s，手机上 0.6~1.2s）。同一库同一主密钥下复用盐不降低
+  /// 安全性：盐的作用是阻止跨库预计算，而每条记录的 GCM nonce 仍各自随机。
+  /// 主流密码管理器本来就是"一库一盐派生一把主密钥"。
+  VaultCipher(this._password, {Uint8List? writeSalt})
+      : _writeSalt = writeSalt ?? _randomBytes(16);
 
   final String _password;
 
-  /// 本会话所有写入统一使用的盐（构造时随机生成一次）。
+  /// 本会话所有写入统一使用的盐。
   final Uint8List _writeSalt;
 
   static const int _version = 0x01;
   static const int _kdfPbkdf2Sha256 = 1;
   static const int _iterations = 100000;
+
+  /// 新写入使用的 PBKDF2 迭代次数（调用方挑复用盐时要按它过滤）。
+  static int get defaultIterations => _iterations;
   static const int _saltLen = 16;
   static const int _nonceLen = 12;
   static const int _tagBits = 128;
@@ -36,13 +45,24 @@ class VaultCipher {
   /// 已派生密钥缓存：'<saltBase64>|<iter>' → 32 字节密钥。
   final Map<String, Uint8List> _keyCache = {};
 
+  /// 正在后台派生中的密钥：cacheKey → 完成时缓存已写好的 Future。
+  /// 用来给并发的 [warmUp]/[decryptAsync] 去重——否则连点几下就会 spawn
+  /// 好几个 isolate 重复算同一把密钥，在手机上直接把 CPU 打满。
+  final Map<String, Future<void>> _inflight = {};
+
+  /// 仅用于测试/诊断：当前 isolate（UI 线程）上真正跑过的 PBKDF2 次数。
+  /// 用户手势路径应恒为 0，一旦增长就说明又有同步解密堵住了主线程。
+  static int debugMainIsolatePbkdf2Count = 0;
+
   static String _cacheKeyFor(Uint8List salt, int iterations) =>
       '${base64Url.encode(salt)}|$iterations';
 
   Uint8List _deriveKey(Uint8List salt, int iterations) {
     final cacheKey = _cacheKeyFor(salt, iterations);
-    return _keyCache[cacheKey] ??=
-        _pbkdf2(_password, salt, iterations);
+    final cached = _keyCache[cacheKey];
+    if (cached != null) return cached;
+    debugMainIsolatePbkdf2Count++;
+    return _keyCache[cacheKey] = _pbkdf2(_password, salt, iterations);
   }
 
   /// 纯函数版 PBKDF2（无实例状态），供实例方法与后台 isolate 共用。
@@ -59,25 +79,60 @@ class VaultCipher {
   /// 每个盐首次解密都要跑一次 ~100ms 的 PBKDF2；解锁后调用本方法一次性预热，
   /// 即可消除"进入软件后前几次复制明显卡顿"的问题。
   Future<void> warmUp(Iterable<({Uint8List salt, int iterations})> params) async {
+    final waits = <Future<void>>[];
     final pending = <({Uint8List salt, int iterations, String cacheKey})>[];
     final seen = <String>{};
     for (final p in params) {
       final ck = _cacheKeyFor(p.salt, p.iterations);
       if (_keyCache.containsKey(ck) || !seen.add(ck)) continue;
+      final running = _inflight[ck];
+      if (running != null) {
+        // 同一把密钥已在别处派生中，等它就行，别再开一个 isolate。
+        waits.add(running);
+        continue;
+      }
       pending.add((salt: p.salt, iterations: p.iterations, cacheKey: ck));
     }
-    if (pending.isEmpty) return;
-    final password = _password;
-    final derived = await Isolate.run(() => [
-          for (final p in pending)
-            (
-              cacheKey: p.cacheKey,
-              key: _pbkdf2(password, p.salt, p.iterations),
-            ),
-        ]);
-    for (final d in derived) {
-      _keyCache[d.cacheKey] = d.key;
+
+    if (pending.isNotEmpty) {
+      final password = _password;
+      final batch = Isolate.run(() => [
+            for (final p in pending)
+              (
+                cacheKey: p.cacheKey,
+                key: _pbkdf2(password, p.salt, p.iterations),
+              ),
+          ]).then((derived) {
+        for (final d in derived) {
+          _keyCache[d.cacheKey] = d.key;
+        }
+      }).whenComplete(() {
+        for (final p in pending) {
+          _inflight.remove(p.cacheKey);
+        }
+      });
+      // 先登记再等待：期间到来的同盐请求会命中 _inflight。
+      for (final p in pending) {
+        _inflight[p.cacheKey] = batch;
+      }
+      waits.add(batch);
     }
+
+    if (waits.isEmpty) return;
+    await Future.wait(waits);
+  }
+
+  /// 为一批密文 token 预热密钥：解析出各自的盐，去重后一次性在后台派生好。
+  /// 查询路径在解密前调它，保证之后的 [decrypt] 全部命中缓存。
+  Future<void> warmUpForTokens(Iterable<String?> tokens) {
+    final params = <({Uint8List salt, int iterations})>[];
+    for (final t in tokens) {
+      if (t == null || t.isEmpty) continue;
+      final p = tokenParams(t);
+      if (p != null) params.add(p);
+    }
+    if (params.isEmpty) return Future<void>.value();
+    return warmUp(params);
   }
 
   /// 与 [decrypt] 相同，但该 token 的密钥未缓存时先在后台 isolate 派生，
@@ -87,7 +142,11 @@ class VaultCipher {
     final params = tokenParams(token);
     if (params != null &&
         !_keyCache.containsKey(_cacheKeyFor(params.salt, params.iterations))) {
-      await warmUp([params]);
+      try {
+        await warmUp([params]);
+      } catch (_) {
+        // 后台派生失败（isolate 起不来等）不该让解密失败，退回同步派生。
+      }
     }
     return decrypt(token);
   }

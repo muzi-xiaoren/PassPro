@@ -342,16 +342,19 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final l10n = AppLocalizations.of(context)!;
     // 与解锁一致：留空 → 单空格
     final newPw = _key.text.isEmpty ? ' ' : _key.text;
     final messenger = ScaffoldMessenger.of(context);
-    context.read<AppState>().rekey(newPw);
-    Navigator.of(context).pop();
+    final navigator = Navigator.of(context);
+    // 先关对话框再等预热：换完密钥同样要把密钥派生好，否则回到列表后
+    // 第一次点击又会在 UI 线程上跑 PBKDF2。
+    navigator.pop();
     messenger.showSnackBar(
       SnackBar(content: Text(l10n.masterKeyChanged)),
     );
+    await context.read<AppState>().rekey(newPw);
   }
 
   @override
@@ -428,29 +431,66 @@ class _QueryTabState extends State<_QueryTab> {
   List<String> _suggestions = const [];
   late final _index = context.read<AppState>().vault.index;
 
+  /// 全部网站名的小写副本，索引变化时才重建。
+  /// 以前每次按键都全库扫一遍取 website 并 toLowerCase，手机上白烧 CPU。
+  List<({String name, String lower})> _names = const [];
+  Timer? _suggestDebounce;
+  /// 查询是异步的（解密前要等密钥派生），用它防止连点堆叠 + 让旧请求作废。
+  int _queryToken = 0;
+  bool _querying = false;
+
   @override
   void initState() {
     super.initState();
     _index.addListener(_onIndexChanged);
+    _rebuildNames();
   }
 
   @override
   void dispose() {
+    _suggestDebounce?.cancel();
     _index.removeListener(_onIndexChanged);
     _ctrl.dispose();
     super.dispose();
   }
 
-  /// 索引变化（删除/编辑/同步）后，若已有查询结果则自动重查，保持热更新。
-  void _onIndexChanged() {
-    if (mounted && _result != null) _doQuery();
+  void _rebuildNames() {
+    final seen = <String>{};
+    final out = <({String name, String lower})>[];
+    for (final r in _index.activeRecords) {
+      final w = r.website ?? '';
+      if (w.isEmpty || !seen.add(w)) continue;
+      out.add((name: w, lower: w.toLowerCase()));
+    }
+    _names = out;
   }
 
-  void _doQuery() {
+  /// 索引变化（删除/编辑/同步）后，若已有查询结果则自动重查，保持热更新。
+  void _onIndexChanged() {
+    if (!mounted) return;
+    _rebuildNames();
+    if (_result != null) unawaited(_doQuery());
+  }
+
+  /// 执行查询。解密前先在后台 isolate 把命中记录用到的密钥派生好，
+  /// UI 线程零 PBKDF2 —— 这正是"输入后一点就卡死然后被系统杀掉"的根因。
+  Future<void> _doQuery() async {
     final app = context.read<AppState>();
     final l10n = AppLocalizations.of(context)!;
-    final r = app.vault.query(_ctrl.text.trim(), app.cipher, app.settings.searchConfig);
+    final token = ++_queryToken;
+    if (!_querying) setState(() => _querying = true);
+    QueryResult r;
+    try {
+      r = await app.vault
+          .queryAsync(_ctrl.text.trim(), app.cipher, app.settings.searchConfig);
+    } catch (_) {
+      // 未解锁等异常：按"主密钥不可用"处理，别让异常逃出点击回调。
+      r = const QueryResult.invalidKey();
+    }
+    // 期间又发起了新查询 / 页面已销毁 → 丢弃这次结果。
+    if (!mounted || token != _queryToken) return;
     setState(() {
+      _querying = false;
       _result = r;
       _emptyMessage = r.invalidKey
           ? l10n.queryInvalidKey
@@ -460,34 +500,42 @@ class _QueryTabState extends State<_QueryTab> {
   }
 
   /// 输入变化：从当前库的网站名里筛出包含输入串的（去重、前缀优先），做点击补全。
+  /// 防抖 180ms，手机上连续打字不会每个字符都重算 + 重排版。
   void _onQueryChanged(String text) {
+    _suggestDebounce?.cancel();
     final q = text.trim().toLowerCase();
     if (q.isEmpty) {
       if (_suggestions.isNotEmpty) setState(() => _suggestions = const []);
       return;
     }
-    final names = <String>{};
-    for (final r in context.read<AppState>().vault.index.activeRecords) {
-      final w = r.website ?? '';
-      if (w.isNotEmpty && w.toLowerCase().contains(q)) names.add(w);
-    }
-    final list = names.toList()
-      ..sort((a, b) {
+    _suggestDebounce = Timer(
+      const Duration(milliseconds: 180),
+      () => _updateSuggestions(q),
+    );
+  }
+
+  void _updateSuggestions(String q) {
+    if (!mounted) return;
+    final list = [
+      for (final n in _names)
+        if (n.lower.contains(q)) n,
+    ]..sort((a, b) {
         // 前缀匹配优先，其次按字母序
-        final ap = a.toLowerCase().startsWith(q) ? 0 : 1;
-        final bp = b.toLowerCase().startsWith(q) ? 0 : 1;
+        final ap = a.lower.startsWith(q) ? 0 : 1;
+        final bp = b.lower.startsWith(q) ? 0 : 1;
         if (ap != bp) return ap - bp;
-        return a.toLowerCase().compareTo(b.toLowerCase());
+        return a.lower.compareTo(b.lower);
       });
-    setState(() => _suggestions = list.take(10).toList());
+    setState(() => _suggestions = [for (final n in list.take(10)) n.name]);
   }
 
   /// 点击某个补全项：填入输入框并立即查询。
   void _pickSuggestion(String website) {
+    _suggestDebounce?.cancel();
     _ctrl.text = website;
     _ctrl.selection = TextSelection.collapsed(offset: website.length);
     FocusScope.of(context).unfocus();
-    _doQuery();
+    unawaited(_doQuery());
   }
 
   Widget _buildSuggestions() {
@@ -527,21 +575,21 @@ class _QueryTabState extends State<_QueryTab> {
             controller: _ctrl,
             textInputAction: TextInputAction.search,
             onChanged: _onQueryChanged,
-            onSubmitted: (_) => _doQuery(),
+            onSubmitted: (_) => unawaited(_doQuery()),
             decoration: InputDecoration(
               labelText: l10n.queryFieldLabel,
               prefixIcon: const Icon(Icons.search),
               border: const OutlineInputBorder(),
               suffixIcon: IconButton(
                 icon: const Icon(Icons.arrow_forward),
-                onPressed: _doQuery,
+                onPressed: () => unawaited(_doQuery()),
               ),
             ),
           ),
           const SizedBox(height: 12),
           if (_suggestions.isNotEmpty) _buildSuggestions(),
           // 多个结果时给出排序方式：匹配度 / 修改时间。
-          if (_result != null && _result!.entries.length > 1)
+          if (_result != null && _result!.records.length > 1)
             _buildQuerySortBar(l10n),
           Expanded(
             child: _buildBody(),
@@ -586,13 +634,15 @@ class _QueryTabState extends State<_QueryTab> {
   }
 
   /// 按当前排序方式整理查询结果。匹配度即搜索原始顺序。
-  List<PasswordEntry> _sortedEntries(List<PasswordEntry> entries) {
-    if (_querySort == _QuerySort.relevance) return entries;
-    return List.of(entries)
-      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  List<LogRecord> _sortedRecords(List<LogRecord> records) {
+    if (_querySort == _QuerySort.relevance) return records;
+    return List.of(records)..sort((a, b) => b.ts.compareTo(a.ts));
   }
 
   Widget _buildBody() {
+    if (_querying && _result == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
     if (_result == null) {
       return Center(
         child: Text(AppLocalizations.of(context)!.queryPrompt),
@@ -601,22 +651,30 @@ class _QueryTabState extends State<_QueryTab> {
     if (_emptyMessage != null) {
       return Center(child: Text(_emptyMessage!));
     }
-    final entries = _sortedEntries(_result!.entries);
+    final records = _sortedRecords(_result!.records);
     return ListView.separated(
-      itemCount: entries.length,
+      itemCount: records.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (_, i) => _PasswordCard(
-        entry: entries[i],
-        onChanged: _doQuery,
+        // key 绑到 record id：排序切换 / 重查后各卡片的"已显示明文"状态
+        // 不会串到别的条目上。
+        key: ValueKey(records[i].id),
+        record: records[i],
+        onChanged: () => unawaited(_doQuery()),
       ),
     );
   }
 }
 
 class _PasswordCard extends StatefulWidget {
-  const _PasswordCard({required this.entry, required this.onChanged});
+  const _PasswordCard({
+    super.key,
+    required this.record,
+    required this.onChanged,
+  });
 
-  final PasswordEntry entry;
+  /// 仍是密文的记录。明文只在用户点"显示 / 复制 / 编辑"时才解一次。
+  final LogRecord record;
   final VoidCallback onChanged;
 
   @override
@@ -625,6 +683,49 @@ class _PasswordCard extends StatefulWidget {
 
 class _PasswordCardState extends State<_PasswordCard> {
   bool _show = false;
+  /// 解出来的明文，null = 还没解过。
+  String? _plain;
+  bool _busy = false;
+
+  String get _website => widget.record.website ?? '';
+  String get _username => widget.record.username ?? '';
+
+  /// 按需解密，结果缓存在卡片里。密钥没缓存时在后台 isolate 派生，
+  /// 不会阻塞点击那一帧。解不开（主密钥错 / 坏行）返回 null 并提示。
+  Future<String?> _plaintext() async {
+    final cached = _plain;
+    if (cached != null) return cached;
+    final app = context.read<AppState>();
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    if (_busy) return null;
+    setState(() => _busy = true);
+    try {
+      final pw = await app.vault.index
+          .decryptPasswordAsync(widget.record, app.cipher);
+      if (!mounted) return pw;
+      setState(() => _plain = pw);
+      return pw;
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.decryptFailedCopy)),
+        );
+      }
+      return null;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _toggleShow() async {
+    if (_show) {
+      setState(() => _show = false);
+      return;
+    }
+    if (await _plaintext() == null) return;
+    if (mounted) setState(() => _show = true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -640,10 +741,9 @@ class _PasswordCardState extends State<_PasswordCard> {
               children: [
                 Expanded(
                   child: _CopyBar(
-                    onTap: () =>
-                        _copy(widget.entry.website, l10n.websiteCopied),
+                    onTap: () => _copy(_website, l10n.websiteCopied),
                     child: Text(
-                      widget.entry.website,
+                      _website,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
@@ -651,7 +751,7 @@ class _PasswordCardState extends State<_PasswordCard> {
                 IconButton(
                   tooltip: l10n.edit,
                   icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => _edit(context),
+                  onPressed: _busy ? null : () => unawaited(_edit(context)),
                 ),
                 IconButton(
                   tooltip: l10n.delete,
@@ -660,7 +760,7 @@ class _PasswordCardState extends State<_PasswordCard> {
                 ),
               ],
             ),
-            if (widget.entry.username.isNotEmpty)
+            if (_username.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
@@ -670,16 +770,14 @@ class _PasswordCardState extends State<_PasswordCard> {
                     // 点击用户名横条即复制用户名。
                     Expanded(
                       child: _CopyBar(
-                        onTap: () =>
-                            _copy(widget.entry.username, l10n.usernameCopied),
-                        child: Text(widget.entry.username),
+                        onTap: () => _copy(_username, l10n.usernameCopied),
+                        child: Text(_username),
                       ),
                     ),
                     IconButton(
                       tooltip: l10n.copyUsername,
                       icon: const Icon(Icons.copy, size: 18),
-                      onPressed: () =>
-                          _copy(widget.entry.username, l10n.usernameCopied),
+                      onPressed: () => _copy(_username, l10n.usernameCopied),
                     ),
                   ],
                 ),
@@ -691,27 +789,33 @@ class _PasswordCardState extends State<_PasswordCard> {
                 // 点击密码横条即复制密码（无论是否处于隐藏状态，复制的都是真实密码）。
                 Expanded(
                   child: _CopyBar(
-                    onTap: _copyPasswordField,
+                    onTap: () => unawaited(_copyPasswordField()),
                     child: Text(
-                      _show ? widget.entry.password : '•' * 12,
+                      _show ? (_plain ?? '') : '•' * 12,
                       style: const TextStyle(fontFamily: 'monospace'),
                     ),
                   ),
                 ),
                 IconButton(
                   tooltip: _show ? l10n.hide : l10n.show,
-                  icon: Icon(
-                    _show
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    size: 18,
-                  ),
-                  onPressed: () => setState(() => _show = !_show),
+                  icon: _busy
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          _show
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 18,
+                        ),
+                  onPressed: _busy ? null : () => unawaited(_toggleShow()),
                 ),
                 IconButton(
                   tooltip: l10n.copyPassword,
                   icon: const Icon(Icons.copy, size: 18),
-                  onPressed: _copyPasswordField,
+                  onPressed: _busy ? null : () => unawaited(_copyPasswordField()),
                 ),
               ],
             ),
@@ -728,18 +832,31 @@ class _PasswordCardState extends State<_PasswordCard> {
     );
   }
 
-  /// 复制密码并累加复制次数（用于“最常用”排序）。
-  void _copyPasswordField() {
+  /// 复制密码并累加复制次数（用于“最常用”排序）。按需解密。
+  Future<void> _copyPasswordField() async {
     final app = context.read<AppState>();
-    unawaited(app.settings.bumpCopyCount(widget.entry.id));
-    _copy(widget.entry.password, AppLocalizations.of(context)!.passwordCopied);
+    final copied = AppLocalizations.of(context)!.passwordCopied;
+    final pw = await _plaintext();
+    if (pw == null || !mounted) return;
+    unawaited(app.settings.bumpCopyCount(widget.record.id));
+    _copy(pw, copied);
   }
 
   Future<void> _edit(BuildContext context) async {
-    final res = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => EditPasswordPage(existing: widget.entry),
-      ),
+    final navigator = Navigator.of(context);
+    // 解密放在 push 之前：以前在路由 builder 里同步解，密钥没缓存时
+    // PBKDF2 会把整个转场动画冻住。
+    final pw = await _plaintext();
+    if (pw == null || !mounted) return;
+    final entry = PasswordEntry(
+      id: widget.record.id,
+      website: _website,
+      username: _username,
+      password: pw,
+      updatedAt: widget.record.ts,
+    );
+    final res = await navigator.push<bool>(
+      MaterialPageRoute(builder: (_) => EditPasswordPage(existing: entry)),
     );
     if (res == true) widget.onChanged();
   }
@@ -750,7 +867,7 @@ class _PasswordCardState extends State<_PasswordCard> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.confirmDelete),
-        content: Text(l10n.deleteBody(widget.entry.website)),
+        content: Text(l10n.deleteBody(_website)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -772,7 +889,7 @@ class _PasswordCardState extends State<_PasswordCard> {
     final beforeOk = await _maybePromptPull(context);
     if (!beforeOk) return;
 
-    await app.vault.deleteById(widget.entry.id);
+    await app.vault.deleteById(widget.record.id);
     if (!context.mounted) return;
     widget.onChanged();
     ScaffoldMessenger.of(context).showSnackBar(
