@@ -166,7 +166,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get queryFieldLabel => 'サイト（キーワードの部分一致に対応）';
 
   @override
-  String get queryInvalidKey => 'マスターキーが違います：一致するサイトはありますが復号できません';
+  String get queryInvalidKey => 'これらの項目は現在のマスターキーでは暗号化されていません（キーを切り替えてお試しください）';
 
   @override
   String get queryNoMatch => '一致するレコードが見つかりません';
@@ -607,6 +607,28 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get masterKeyWrong => 'マスターキーが違います';
+
+  @override
+  String get switchMasterKey => 'マスターキーを切り替え';
+
+  @override
+  String get masterKeySwitched => 'マスターキーを切り替えました';
+
+  @override
+  String get newKeySpaceTitle => 'このマスターキーでは既存の項目を一つも開けません';
+
+  @override
+  String get newKeySpaceBody =>
+      '入力ミスですか、それともこのキーで独立したキー空間を新しく作りますか？新しい空間に保存した項目はこのマスターキーでしか開けません。既存の項目は一覧に残りますが復号できません。';
+
+  @override
+  String get newKeySpaceCreate => '新しいキー空間を作る';
+
+  @override
+  String get retryKey => '入力し直す';
+
+  @override
+  String get keySpaceCreated => '新しいキー空間を作成しました';
 
   @override
   String get rekeyWarning => '新しいマスターキーはすぐに有効になります。他の端末は同期するまで旧キーで開けます。';

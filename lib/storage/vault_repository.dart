@@ -152,14 +152,18 @@ class VaultRepository {
 
   // ============ 库密钥 / 迁移到 v2 ============
 
-  /// 当前 keyring（用主密钥包起来的库密钥）；老库还没迁移时为 null。
-  String? get keyring => index.keyring;
+  /// 库里全部 keyring：记录 id → keyring 串。空表示还没有任何密钥空间。
+  Map<String, String> get keyrings => index.keyrings;
 
-  /// 写入/更新 keyring。ts=now，合并时新的胜出——换主密钥就落这一行，O(1)。
-  Future<void> writeKeyring(String blob) async {
+  /// 新密钥空间的 keyring 记录 id。随机后缀：两台设备同时新建也不会撞。
+  static String newKeyringId() =>
+      '$kKeyringIdPrefix${_newId()}';
+
+  /// 写入/更新某把 keyring。ts=now，合并时新的胜出——换主密钥就落这一行，O(1)。
+  Future<void> writeKeyring(String id, String blob) async {
     final r = LogRecord(
       op: LogOp.update,
-      id: kKeyringRecordId,
+      id: id,
       ts: DateTime.now().toUtc(),
       website: '',
       username: '',
@@ -172,11 +176,14 @@ class VaultRepository {
   /// 迁移前留一份原件：`passwords.log.v1bak`（只留第一份）。
   Future<String?> backupBeforeMigration() => store.backupOnce('v1bak');
 
-  /// 把还停在 v1 的记录逐条转成 v2（改用库密钥加密，不再带盐、不再跑 PBKDF2）。
+  /// 把 [c] 解得开、还停在 v1 的记录转成 v2（改用 [c] 的库密钥加密）。
+  ///
+  /// 也是"认领"：多密钥空间下，某把主密钥进来时，库里凡是它解得开的 v1 老记录
+  /// 就归它那个空间。别的主密钥加密的记录解不开，原样留着等它自己的主人来认，
+  /// 并计入 [MigrationReport.skipped]，一条都不会丢。
   ///
   /// 迁移完之后，解锁只剩"拆 keyring"那一次 PBKDF2，跟库里有多少条无关。
-  /// [c] 解不开的记录（主密钥不对）原样保留并计入 [MigrationReport.skipped]，
-  /// 不会丢数据；写回前会再解一次校验，确保新密文可读才落盘。
+  /// 写回前会再解一次校验，确保新密文可读才落盘。
   ///
   /// 所需的 v1 密钥在本方法内先统一后台预热；预热不到的直接跳过——迁移是后台
   /// 维护动作，绝不能自己在 UI 线程上补跑 PBKDF2（那正是卡死的老毛病）。

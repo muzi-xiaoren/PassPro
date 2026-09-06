@@ -10,6 +10,7 @@ import '../models/password_entry.dart';
 import '../settings/app_settings.dart';
 import '../storage/vault_repository.dart';
 import '../sync/sync_manager.dart';
+import 'key_space_prompt.dart';
 import 'password_generator.dart';
 import 'settings_page.dart';
 import 'sync_prompts.dart';
@@ -47,10 +48,24 @@ class _HomePageState extends State<HomePage>
     super.dispose();
   }
 
-  /// 换主密钥现在会重写整库，所以和增删改一样要"前拉后推"：
-  ///   - 不先拉：远端还没拉下来的记录不会被转换，等以后拉回来仍挂在**老密钥**
-  ///     上，那时用户多半已经把老密钥忘了。
-  ///   - 不后推：其他设备拿不到新密钥下的密文。
+  /// 切换主密钥：换一把密钥进另一个密钥空间，不用退出 app 重进。
+  /// 走的就是解锁那套逻辑——拆得开哪把 keyring 就进哪个空间，一把都拆不开
+  /// 就问要不要新建。
+  Future<void> _switchMasterKey(BuildContext context) async {
+    final done = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _SwitchKeyDialog(),
+    );
+    if (done != true || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context)!.masterKeySwitched)),
+    );
+  }
+
+  /// 更换主密钥只重写当前空间的 keyring（O(1)），但仍要"前拉后推"：
+  ///   - 不先拉：远端还没拉下来的老格式记录不会被转换，等以后拉回来仍挂在
+  ///     **老主密钥**上，那时用户多半已经把老主密钥忘了。
+  ///   - 不后推：其他设备拿不到新的 keyring，还在用旧主密钥开。
   Future<void> _changeMasterKey(BuildContext context) async {
     if (!await _maybePromptPull(context)) return;
     if (!context.mounted) return;
@@ -73,10 +88,34 @@ class _HomePageState extends State<HomePage>
         actions: [
           const _SyncStatusBadge(),
           // 更换主密钥 / 锁定：拆成两个独立按钮，排在顶栏。
-          IconButton(
+          // 两个主密钥动作合在一个入口里，省得顶栏挤成一排图标：
+          //   切换 = 换一把密钥进另一个密钥空间（不退出 app）
+          //   更换 = 把当前空间的主密钥改掉
+          PopupMenuButton<_KeyAction>(
             tooltip: l10n.changeMasterKey,
             icon: const Icon(Icons.key_outlined),
-            onPressed: () => _changeMasterKey(context),
+            onSelected: (a) => switch (a) {
+              _KeyAction.switchKey => _switchMasterKey(context),
+              _KeyAction.changeKey => _changeMasterKey(context),
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: _KeyAction.switchKey,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.swap_horiz),
+                  title: Text(l10n.switchMasterKey),
+                ),
+              ),
+              PopupMenuItem(
+                value: _KeyAction.changeKey,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.key_outlined),
+                  title: Text(l10n.changeMasterKey),
+                ),
+              ),
+            ],
           ),
           IconButton(
             tooltip: l10n.lock,
@@ -325,6 +364,130 @@ class _SyncStatusBadge extends StatelessWidget {
         };
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(failed ? (statusText ?? l10n.syncError) : okMsg)),
+    );
+  }
+}
+
+enum _KeyAction { switchKey, changeKey }
+
+// ===================== 切换主密钥弹窗 =====================
+
+/// 输入另一把主密钥，切到它的密钥空间。库里不认识这把密钥时问一句要不要新建。
+class _SwitchKeyDialog extends StatefulWidget {
+  const _SwitchKeyDialog();
+
+  @override
+  State<_SwitchKeyDialog> createState() => _SwitchKeyDialogState();
+}
+
+class _SwitchKeyDialogState extends State<_SwitchKeyDialog> {
+  final _key = TextEditingController();
+  late bool _obscure;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _obscure = !context.read<AppState>().settings.masterKeyVisible;
+  }
+
+  @override
+  void dispose() {
+    _key.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_busy) return;
+    final l10n = AppLocalizations.of(context)!;
+    final pw = _key.text.isEmpty ? ' ' : _key.text;
+    final app = context.read<AppState>();
+    final navigator = Navigator.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final UnlockOutcome outcome;
+    try {
+      outcome = await app.unlock(pw);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted) return;
+    if (outcome == UnlockOutcome.unknownKey) {
+      final create = await confirmCreateKeySpace(context);
+      if (!mounted) return;
+      if (!create) {
+        setState(() => _error = l10n.masterKeyWrong);
+        return;
+      }
+      setState(() => _busy = true);
+      try {
+        await app.createKeySpace(pw);
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+      if (!mounted) return;
+    }
+    navigator.pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return AlertDialog(
+      title: Text(l10n.switchMasterKey),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _key,
+            obscureText: _obscure,
+            autofocus: true,
+            enabled: !_busy,
+            onSubmitted: (_) => _submit(),
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+            decoration: InputDecoration(
+              labelText: l10n.masterKeyLabel,
+              errorText: _error,
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                tooltip: _obscure ? l10n.show : l10n.hide,
+                icon: Icon(_obscure
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined),
+                onPressed: () {
+                  setState(() => _obscure = !_obscure);
+                  context
+                      .read<AppState>()
+                      .settings
+                      .setMasterKeyVisible(!_obscure);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _submit,
+          child: _busy
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.switchMasterKey),
+        ),
+      ],
     );
   }
 }

@@ -13,23 +13,26 @@ class MemoryIndex extends ChangeNotifier {
   /// 仅密文索引：不需要主密钥即可加载。明文密码只在调用 [decryptPassword] 时即时解密。
   final Map<String, LogRecord> _records = {};
 
-  /// keyring 那一条单独放，**不进 [_records]**：这样搜索/列表/计数/导出/迁移
+  /// keyring 单独放，**不进 [_records]**：这样搜索/列表/计数/导出/迁移
   /// 这些遍历 [activeRecords] 的地方一个都不用改，也绝不会把它当成密码条目。
-  LogRecord? _keyringRecord;
+  /// 一个库可以有多把（多个密钥空间），按记录 id 存。
+  final Map<String, LogRecord> _keyringRecords = {};
 
-  /// 当前 keyring 串（用主密钥包起来的库密钥）；老库还没迁移时为 null。
-  String? get keyring {
-    final ct = _keyringRecord?.encryptedPassword;
-    return (ct == null || ct.isEmpty) ? null : ct;
-  }
+  /// 全部 keyring：记录 id → keyring 串。解锁时挨个试着拆，拆开哪把进哪个空间。
+  Map<String, String> get keyrings => {
+        for (final e in _keyringRecords.entries)
+          if (e.value.encryptedPassword case final ct?)
+            if (ct.isNotEmpty) e.key: ct,
+      };
 
-  LogRecord? get keyringRecord => _keyringRecord;
+  Iterable<LogRecord> get keyringRecords => _keyringRecords.values;
 
   /// 返回 true 表示这行是 keyring，已单独收好，不该再进活记录表。
   bool _takeKeyring(LogRecord r) {
-    if (r.id != kKeyringRecordId) return false;
-    // DEL 一律忽略：老版本把它当普通条目、用户手滑删掉的话，整库就再也打不开了。
-    if (r.op != LogOp.delete) _keyringRecord = r;
+    if (!isKeyringId(r.id)) return false;
+    // DEL 一律忽略：老版本把它当普通条目、用户手滑删掉的话，那个空间里的记录
+    // 就再也打不开了。
+    if (r.op != LogOp.delete) _keyringRecords[r.id] = r;
     return true;
   }
 
@@ -47,7 +50,7 @@ class MemoryIndex extends ChangeNotifier {
   /// 用日志记录 replay 出最新状态。同 id 后写覆盖前写；DEL 移除。
   void replay(List<LogRecord> log) {
     _records.clear();
-    _keyringRecord = null;
+    _keyringRecords.clear();
     _scannedLines = log.length;
     for (final r in log) {
       if (_takeKeyring(r)) continue;

@@ -177,7 +177,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get queryInvalidKey =>
-      'Falscher Hauptschlüssel: passende Website gefunden, aber Entschlüsseln nicht möglich';
+      'Diese Einträge wurden nicht mit dem aktuellen Hauptschlüssel verschlüsselt (Schlüssel wechseln und erneut versuchen)';
 
   @override
   String get queryNoMatch => 'Keine passenden Einträge gefunden';
@@ -630,6 +630,29 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get masterKeyWrong => 'Falscher Hauptschlüssel';
+
+  @override
+  String get switchMasterKey => 'Hauptschlüssel wechseln';
+
+  @override
+  String get masterKeySwitched => 'Hauptschlüssel gewechselt';
+
+  @override
+  String get newKeySpaceTitle =>
+      'Mit diesem Hauptschlüssel lässt sich kein vorhandener Eintrag öffnen';
+
+  @override
+  String get newKeySpaceBody =>
+      'Haben Sie sich vertippt, oder möchten Sie damit einen eigenen Schlüsselbereich anlegen? Einträge im neuen Bereich lassen sich nur mit diesem Hauptschlüssel öffnen; vorhandene Einträge bleiben in der Liste, lassen sich aber nicht entschlüsseln.';
+
+  @override
+  String get newKeySpaceCreate => 'Neuen Schlüsselbereich anlegen';
+
+  @override
+  String get retryKey => 'Erneut eingeben';
+
+  @override
+  String get keySpaceCreated => 'Neuer Schlüsselbereich angelegt';
 
   @override
   String get rekeyWarning =>

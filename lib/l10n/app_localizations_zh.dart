@@ -165,7 +165,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get queryFieldLabel => '网址（支持关键词部分匹配）';
 
   @override
-  String get queryInvalidKey => '主密钥错误：找到匹配网址但无法解密';
+  String get queryInvalidKey => '这些条目不是当前主密钥加密的（切换主密钥后再试）';
 
   @override
   String get queryNoMatch => '没有找到匹配的记录';
@@ -603,6 +603,28 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get masterKeyWrong => '主密钥错误，请重新输入';
+
+  @override
+  String get switchMasterKey => '切换主密钥';
+
+  @override
+  String get masterKeySwitched => '已切换主密钥';
+
+  @override
+  String get newKeySpaceTitle => '这把主密钥打不开任何已有条目';
+
+  @override
+  String get newKeySpaceBody =>
+      '是输错了，还是要用它新建一个独立的密钥空间？新空间里存的条目只有这把主密钥解得开；库里已有的条目仍会列出来，但解不开。';
+
+  @override
+  String get newKeySpaceCreate => '新建密钥空间';
+
+  @override
+  String get retryKey => '重新输入';
+
+  @override
+  String get keySpaceCreated => '已新建密钥空间';
 
   @override
   String get rekeyWarning => '将立即改用新主密钥。其他设备同步到新的密钥信息之前，仍可用旧主密钥打开。';

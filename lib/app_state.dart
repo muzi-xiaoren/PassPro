@@ -49,43 +49,104 @@ class AppState extends ChangeNotifier {
     return c;
   }
 
-  /// 解锁：主密钥正确返回 true，错误返回 false（不进入主界面）。
-  ///
-  /// 迁移过的库走 keyring：拿主密钥拆开那一小块取出库密钥，**恒定 1 次 PBKDF2**，
-  /// 而且 GCM 认证标签直接判定密钥对不对，不用再拿"有没有一条记录解得开"去猜。
-  /// 之后解密任何记录都是纯 AES，零 PBKDF2——库里有 100 条还是 1 万条都一样快。
-  ///
-  /// 还没迁移的老库走 [_unlockLegacy]。
-  Future<bool> unlock(String masterPassword) async {
-    final blob = vault.keyring;
-    if (blob == null) return _unlockLegacy(masterPassword);
+  /// 当前会话打开的那些 keyring 的记录 id（换主密钥时要逐把重新包）。
+  List<String> _myKeyringIds = const [];
 
-    Uint8List? vk;
-    try {
-      vk = await VaultCipher.unwrapVaultKeyAsync(masterPassword, blob);
-    } catch (_) {
-      // isolate 起不来（极少数平台/沙箱）就地兜底，慢一点也得让人进得去。
-      vk = VaultCipher.unwrapVaultKey(masterPassword, blob);
-    }
-    if (vk == null) return false; // 主密钥不对，精确判定
-    _cipher = VaultCipher(masterPassword, vaultKey: vk);
+  /// 当前主密钥打开的密钥空间还没建 keyring（老库、还没迁移）时为 true。
+  bool get hasKeySpace => _myKeyringIds.isNotEmpty;
+
+  void _setSession(VaultCipher c, List<String> keyringIds) {
+    _cipher = c;
+    _myKeyringIds = keyringIds;
     notifyListeners();
-    _scheduleMigration(); // 还有 v1 老记录就后台转
-    return true;
   }
 
-  /// 老库（还没有 keyring）的解锁：主密钥不落盘，也没有 keyring 可比对，
-  /// 只能拿"库里至少有一条记录能被这把密钥解开"来判定。
-  Future<bool> _unlockLegacy(String masterPassword) async {
+  /// 解锁 / 会话中途切换主密钥。
+  ///
+  /// 一个库可以装**多个密钥空间**：每把主密钥包着自己的库密钥（keyring），
+  /// 只解得开自己那批记录，新存的也归自己。所以这里挨个试着拆库里的 keyring：
+  ///
+  ///   - 拆开了 → 进那个空间（拆一把 = 1 次 PBKDF2，一批扔进同一个 isolate）；
+  ///   - 一把都没拆开，但有 v1 老记录能被这把主密钥解开 → 它是那批记录的主人，
+  ///     照常放行，随后在后台把它们收进一个新建的空间；
+  ///   - 空库首次使用 → 直接开一个空间，不用问；
+  ///   - 其余情况 → [UnlockOutcome.unknownKey]，**不放行也不新建**，当前会话
+  ///     原样保留（会话中途切换失败不该把人踢出去）。可能是输错了
+  ///     一个字，也可能是真想开个新空间——交给 UI 问一句，答"新建"再走
+  ///     [createKeySpace]。老版本这里是无条件放行，于是输错一个字就悄悄进了一个
+  ///     空空间，存进去的东西全落在一把记不住的密钥下。
+  Future<UnlockOutcome> unlock(String masterPassword) async {
+    final keyrings = vault.keyrings;
+    if (keyrings.isNotEmpty) {
+      final ids = keyrings.keys.toList(growable: false);
+      final blobs = [for (final id in ids) keyrings[id]!];
+      final hits = await _unwrapAll(masterPassword, blobs);
+      if (hits.isNotEmpty) {
+        _migrating = null; // 换了个空间，后台迁移要按新空间重来
+        _setSession(
+          VaultCipher(
+            masterPassword,
+            vaultKey: hits.first.key,
+            alsoDecryptWith: [for (final h in hits.skip(1)) h.key],
+          ),
+          [for (final h in hits) ids[h.index]],
+        );
+        _scheduleMigration(); // 认领本空间里还停在 v1 的老记录
+        return UnlockOutcome.ok;
+      }
+    }
+
+    // 没有 keyring 认这把主密钥：看看它是不是某批 v1 老记录的主人。
     final tokens = _activeTokens();
-    final probe =
-        VaultCipher(masterPassword, legacyWriteSalt: _dominantSalt(tokens));
-    if (!await _verifyLegacy(probe, tokens)) return false;
-    _cipher = probe;
-    notifyListeners();
-    // 主密钥验过了 → 立刻建库密钥并开始迁移（条件不满足就留到对齐之后）。
-    _scheduleMigration();
-    return true;
+    final legacy = [
+      for (final t in tokens)
+        if (VaultCipher.isLegacyToken(t)) t,
+    ];
+    if (legacy.isNotEmpty) {
+      final probe =
+          VaultCipher(masterPassword, legacyWriteSalt: _dominantSalt(legacy));
+      if (await _verifyLegacy(probe, legacy)) {
+        _migrating = null;
+        _setSession(probe, const []); // 先按 v1 读写，随后后台建 keyring
+        _scheduleMigration();
+        return UnlockOutcome.ok;
+      }
+    }
+
+    // 全新的空库：第一次用，直接开个空间。
+    if (keyrings.isEmpty && tokens.isEmpty) {
+      await createKeySpace(masterPassword);
+      return UnlockOutcome.ok;
+    }
+    return UnlockOutcome.unknownKey;
+  }
+
+  static Future<List<({int index, Uint8List key})>> _unwrapAll(
+    String password,
+    List<String> blobs,
+  ) async {
+    try {
+      return await VaultCipher.unwrapAllAsync(password, blobs);
+    } catch (_) {
+      // isolate 起不来（极少数平台/沙箱）就地兜底，慢一点也得让人进得去。
+      return [
+        for (var i = 0; i < blobs.length; i++)
+          if (VaultCipher.unwrapVaultKey(password, blobs[i]) case final k?)
+            (index: i, key: k),
+      ];
+    }
+  }
+
+  /// 用这把主密钥新开一个密钥空间：生成一把新的库密钥、包成 keyring 写进日志。
+  /// 之后存进去的记录都归这个空间，只有这把主密钥解得开；库里已有的其他条目
+  /// 照常列出来（网站/账号本来就是明文），但解不开。
+  Future<void> createKeySpace(String masterPassword) async {
+    _migrating = null; // 换了个空间，后台迁移要按新空间重来
+    final vk = VaultCipher.newVaultKey();
+    final blob = await VaultCipher.wrapVaultKeyAsync(masterPassword, vk);
+    final id = VaultRepository.newKeyringId();
+    await vault.writeKeyring(id, blob);
+    _setSession(VaultCipher(masterPassword, vaultKey: vk), [id]);
   }
 
   List<String> _activeTokens() => [
@@ -99,9 +160,6 @@ class AppState extends ChangeNotifier {
   /// 密钥的少数情况，慢一点可以接受。
   Future<bool> _verifyLegacy(VaultCipher c, List<String> tokens) async {
     if (tokens.isEmpty) return true;
-    // 一条都不是本格式的密文（文件损坏 / 导入了别的东西）：没有可校验的对象，
-    // 放行。否则用户会被永久关在解锁页外面，连导入导出都点不到。
-    if (!tokens.any((t) => VaultCipher.tokenParams(t) != null)) return true;
     final sameSalt = [
       for (final t in tokens)
         if (c.usesLegacyWriteParams(t)) t,
@@ -182,10 +240,10 @@ class AppState extends ChangeNotifier {
         final vk = VaultCipher.newVaultKey();
         final blob = await cipher.wrapVaultKeyWithOwnPassword(vk);
         if (!identical(_cipher, c)) return;
-        await vault.writeKeyring(blob);
+        final id = VaultRepository.newKeyringId();
+        await vault.writeKeyring(id, blob);
         cipher = cipher.upgraded(vk);
-        _cipher = cipher;
-        notifyListeners();
+        _setSession(cipher, [id]);
       }
       await vault.migrateToVaultKey(cipher);
     } catch (_) {
@@ -224,16 +282,17 @@ class AppState extends ChangeNotifier {
 
   // ==================== 换主密钥 ====================
 
-  /// 更换主密钥：拿新主密钥把**同一把库密钥**重新包一遍，只重写 keyring 那一行。
-  /// 记录一条都不用动，所以是 O(1)，几毫秒的事。
+  /// 更换主密钥：拿新主密钥把**当前空间的库密钥**重新包一遍，只重写 keyring
+  /// 那一行（同一空间有多把库密钥时逐把重写）。记录一条都不用动，所以是 O(1)。
   ///
-  /// 换之前会先把剩下的 v1 老记录转完——不转的话它们只认老主密钥，换完就再也
-  /// 读不出来了。老主密钥都解不开的记录（比如曾经用错密钥存进去的）原样保留，
+  /// 只影响当前这个密钥空间；库里其他空间的 keyring 和记录一概不碰。
+  ///
+  /// 换之前会先把本空间里剩下的 v1 老记录转完——不转的话它们只认老主密钥，
+  /// 换完就再也读不出来了。老主密钥都解不开的记录（属于别的空间）原样保留，
   /// 并在 [RekeyResult.leftBehind] 里如实上报。
   ///
-  /// 库还没迁移（开了云同步但本次会话还没跟远端对齐）时返回
-  /// [RekeyResult.needsSync]，让用户先同步一次——这时候换密钥要重写整库，
-  /// 和别的设备撞上就会把数据搅乱。
+  /// 当前空间还没建 keyring（开了云同步但本次会话还没跟远端对齐）时返回
+  /// [RekeyResult.needsSync]，让用户先同步一次。
   Future<RekeyResult> rekey(String newMasterPassword) async {
     try {
       await _migrating; // 等后台迁移落地，避免两条写路径互相覆盖
@@ -242,22 +301,44 @@ class AppState extends ChangeNotifier {
     }
     final from = _cipher;
     if (from == null) throw StateError('未解锁');
-    if (!from.hasVaultKey) return const RekeyResult.needsSync();
+    if (!from.hasVaultKey || _myKeyringIds.isEmpty) {
+      return const RekeyResult.needsSync();
+    }
 
     final report = await vault.migrateToVaultKey(from);
-    final vk = from.vaultKey!;
-    final blob = await VaultCipher.wrapVaultKeyAsync(newMasterPassword, vk);
-    await vault.writeKeyring(blob);
-    _cipher = VaultCipher(newMasterPassword, vaultKey: vk);
-    notifyListeners();
+    final keys = from.vaultKeys;
+    for (var i = 0; i < _myKeyringIds.length && i < keys.length; i++) {
+      final blob =
+          await VaultCipher.wrapVaultKeyAsync(newMasterPassword, keys[i]);
+      await vault.writeKeyring(_myKeyringIds[i], blob);
+    }
+    _setSession(
+      VaultCipher(
+        newMasterPassword,
+        vaultKey: keys.first,
+        alsoDecryptWith: keys.skip(1).toList(),
+      ),
+      _myKeyringIds,
+    );
     return RekeyResult.ok(report.skipped);
   }
 
   void lock() {
     _cipher = null;
+    _myKeyringIds = const [];
     _migrating = null; // 下次解锁（可能换了密钥）要能重新起迁移
     notifyListeners();
   }
+}
+
+/// 解锁结果。
+enum UnlockOutcome {
+  /// 进了某个已有的密钥空间。
+  ok,
+
+  /// 这把主密钥打不开库里任何已有条目。可能是输错了一个字，也可能是想用它开一个
+  /// 新的密钥空间——由 UI 问一句，答"新建"再调 [AppState.createKeySpace]。
+  unknownKey,
 }
 
 /// 换主密钥的结果。

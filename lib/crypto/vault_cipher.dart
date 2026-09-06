@@ -33,22 +33,32 @@ class VaultCipher {
   VaultCipher(
     this._password, {
     Uint8List? vaultKey,
+    List<Uint8List> alsoDecryptWith = const [],
     Uint8List? legacyWriteSalt,
-  })  : _vaultKey = vaultKey,
+  })  : _vaultKeys = [if (vaultKey != null) vaultKey, ...alsoDecryptWith],
         _legacyWriteSalt = legacyWriteSalt ?? _randomBytes(_saltLen);
 
   final String _password;
 
-  /// 整库共用的加密密钥；null = 还在 v1 模式。
-  final Uint8List? _vaultKey;
+  /// 这把主密钥能打开的全部库密钥；空 = 还在 v1 模式。
+  ///
+  /// 通常只有一把。会有多把是因为：两台设备各自离线迁移过同一个老库，各建了
+  /// 一把 keyring，记录按 ts 分散到了两把库密钥下——但两把 keyring 都是同一个
+  /// 主密钥包的，所以这里全收下，读的时候挨个试（AES 是微秒级，试几把无所谓），
+  /// 写的时候统一用第一把。于是这种"脑裂"对用户完全不可见。
+  final List<Uint8List> _vaultKeys;
 
   /// v1 模式下所有写入使用的盐。
   final Uint8List _legacyWriteSalt;
 
-  bool get hasVaultKey => _vaultKey != null;
+  bool get hasVaultKey => _vaultKeys.isNotEmpty;
 
-  /// 当前库密钥（换主密钥时要拿它重新包一遍）。还在 v1 模式时为 null。
-  Uint8List? get vaultKey => _vaultKey;
+  /// 写入用的库密钥。还在 v1 模式时为 null。
+  Uint8List? get vaultKey => _vaultKeys.isEmpty ? null : _vaultKeys.first;
+
+  /// 这把主密钥能打开的全部库密钥（换主密钥时要把它们逐把重新包一遍，
+  /// 否则换完之后另一把下面的记录就没人认领了）。
+  List<Uint8List> get vaultKeys => List.unmodifiable(_vaultKeys);
 
   /// v1 模式下的写盐（调用方用它判断某条 v1 密文是否已是"当前会话格式"）。
   Uint8List get legacyWriteSalt => _legacyWriteSalt;
@@ -166,6 +176,22 @@ class VaultCipher {
   ) =>
       Isolate.run(() => unwrapVaultKey(password, blob));
 
+  /// 一个库可以有多把 keyring（多个密钥空间）。在同一个后台 isolate 里逐把试拆，
+  /// 返回这把主密钥能拆开的全部（下标 + 库密钥）；一把都拆不开返回空表。
+  ///
+  /// 一次 spawn 全部试完：拆一把 = 一次 PBKDF2（~0.25s），分开 spawn 的话每把都
+  /// 要付一次 isolate 启动的钱。作用域里只有两个可发送的参数——闭包一旦捎上
+  /// Future 之类的东西，Dart 会直接以 "object is unsendable" 抛错。
+  static Future<List<({int index, Uint8List key})>> unwrapAllAsync(
+    String password,
+    List<String> blobs,
+  ) =>
+      Isolate.run(() => [
+            for (var i = 0; i < blobs.length; i++)
+              if (unwrapVaultKey(password, blobs[i]) case final k?)
+                (index: i, key: k),
+          ]);
+
   /// 用**自己的主密钥**把 [vaultKey] 包成 keyring（后台 isolate 跑 PBKDF2）。
   /// 主密钥不出这个对象。
   Future<String> wrapVaultKeyWithOwnPassword(Uint8List vaultKey) =>
@@ -173,7 +199,7 @@ class VaultCipher {
 
   /// 同一个主密钥、换上库密钥的新会话 cipher（老库迁移到 v2 时用）。
   VaultCipher upgraded(Uint8List vaultKey) =>
-      VaultCipher(_password, vaultKey: vaultKey);
+      VaultCipher(_password, vaultKey: vaultKey, alsoDecryptWith: _vaultKeys);
 
   /// 是不是一条 keyring 串。
   static bool isKeyring(String blob) {
@@ -349,7 +375,7 @@ class VaultCipher {
   String encrypt(String plaintext) {
     final input = Uint8List.fromList(utf8.encode(plaintext));
     final nonce = _randomBytes(_nonceLen);
-    final vk = _vaultKey;
+    final vk = vaultKey;
     if (vk != null) {
       final ct = _gcm(
         forEncryption: true,
@@ -395,8 +421,7 @@ class VaultCipher {
   }
 
   String _decryptV2(Uint8List data) {
-    final vk = _vaultKey;
-    if (vk == null) {
+    if (_vaultKeys.isEmpty) {
       // 库密钥还没拿到（老库尚未迁移就读到了新格式的记录，多半是别的设备
       // 迁移完同步过来的）：等 keyring 一并同步过来就能解开，别报"数据损坏"。
       throw const CryptoException('缺少库密钥，无法解密（keyring 尚未同步到本机）');
@@ -406,7 +431,16 @@ class VaultCipher {
     }
     final nonce = Uint8List.fromList(data.sublist(1, 1 + _nonceLen));
     final ct = Uint8List.fromList(data.sublist(1 + _nonceLen));
-    return _finish(key: vk, nonce: nonce, ct: ct);
+    // 多把库密钥时挨个试：不是本空间的记录会在这里全部失败，抛
+    // CryptoException——这正是"别的主密钥存的条目解不开"的正常路径。
+    for (final k in _vaultKeys) {
+      try {
+        return _finish(key: k, nonce: nonce, ct: ct);
+      } on CryptoException {
+        continue;
+      }
+    }
+    throw const CryptoException('解密失败（主密钥错误或数据损坏）');
   }
 
   String _decryptV1(Uint8List data) {

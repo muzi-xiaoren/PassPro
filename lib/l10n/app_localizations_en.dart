@@ -174,7 +174,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get queryInvalidKey =>
-      'Wrong master key: matching website found but cannot decrypt';
+      'These entries were not encrypted with the current master key (switch keys and retry)';
 
   @override
   String get queryNoMatch => 'No matching records found';
@@ -625,6 +625,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get masterKeyWrong => 'Wrong master key';
+
+  @override
+  String get switchMasterKey => 'Switch master key';
+
+  @override
+  String get masterKeySwitched => 'Master key switched';
+
+  @override
+  String get newKeySpaceTitle =>
+      'This master key opens none of the existing entries';
+
+  @override
+  String get newKeySpaceBody =>
+      'Did you mistype it, or do you want to start a separate key space with it? Entries saved in the new space can only be opened by this master key; existing entries stay listed but will not decrypt.';
+
+  @override
+  String get newKeySpaceCreate => 'Start a new key space';
+
+  @override
+  String get retryKey => 'Try again';
+
+  @override
+  String get keySpaceCreated => 'New key space created';
 
   @override
   String get rekeyWarning =>

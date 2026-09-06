@@ -176,7 +176,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get queryInvalidKey =>
-      'Clé maître incorrecte : site correspondant trouvé mais déchiffrement impossible';
+      'Ces entrées n’ont pas été chiffrées avec la clé maître actuelle (changez de clé puis réessayez)';
 
   @override
   String get queryNoMatch => 'Aucun enregistrement correspondant trouvé';
@@ -629,6 +629,29 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get masterKeyWrong => 'Clé maître incorrecte';
+
+  @override
+  String get switchMasterKey => 'Changer de clé maître';
+
+  @override
+  String get masterKeySwitched => 'Clé maître changée';
+
+  @override
+  String get newKeySpaceTitle =>
+      'Cette clé maître n’ouvre aucune entrée existante';
+
+  @override
+  String get newKeySpaceBody =>
+      'Est-ce une faute de frappe, ou voulez-vous créer un espace de clés distinct avec elle ? Les entrées enregistrées dans le nouvel espace ne s’ouvriront qu’avec cette clé maître ; les entrées existantes restent listées mais ne seront pas déchiffrées.';
+
+  @override
+  String get newKeySpaceCreate => 'Créer un espace de clés';
+
+  @override
+  String get retryKey => 'Ressaisir';
+
+  @override
+  String get keySpaceCreated => 'Nouvel espace de clés créé';
 
   @override
   String get rekeyWarning =>

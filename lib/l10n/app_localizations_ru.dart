@@ -176,7 +176,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get queryInvalidKey =>
-      'Неверный мастер-ключ: совпадающий сайт найден, но расшифровать нельзя';
+      'Эти записи зашифрованы не текущим мастер-ключом (смените ключ и повторите)';
 
   @override
   String get queryNoMatch => 'Совпадающие записи не найдены';
@@ -628,6 +628,29 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get masterKeyWrong => 'Неверный мастер-ключ';
+
+  @override
+  String get switchMasterKey => 'Сменить мастер-ключ';
+
+  @override
+  String get masterKeySwitched => 'Мастер-ключ переключён';
+
+  @override
+  String get newKeySpaceTitle =>
+      'Этим мастер-ключом не открывается ни одна существующая запись';
+
+  @override
+  String get newKeySpaceBody =>
+      'Вы ошиблись при вводе или хотите завести с ним отдельное пространство ключей? Записи в новом пространстве откроются только этим мастер-ключом; существующие записи останутся в списке, но не расшифруются.';
+
+  @override
+  String get newKeySpaceCreate => 'Создать пространство ключей';
+
+  @override
+  String get retryKey => 'Ввести заново';
+
+  @override
+  String get keySpaceCreated => 'Пространство ключей создано';
 
   @override
   String get rekeyWarning =>

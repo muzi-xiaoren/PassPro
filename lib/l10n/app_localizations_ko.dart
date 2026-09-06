@@ -167,7 +167,8 @@ class AppLocalizationsKo extends AppLocalizations {
   String get queryFieldLabel => '사이트(키워드 부분 일치 지원)';
 
   @override
-  String get queryInvalidKey => '마스터 키 오류: 일치하는 사이트는 있으나 복호화할 수 없습니다';
+  String get queryInvalidKey =>
+      '이 항목들은 현재 마스터 키로 암호화된 것이 아닙니다(키를 전환한 뒤 다시 시도하세요)';
 
   @override
   String get queryNoMatch => '일치하는 레코드를 찾을 수 없습니다';
@@ -607,6 +608,28 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get masterKeyWrong => '마스터 키가 올바르지 않습니다';
+
+  @override
+  String get switchMasterKey => '마스터 키 전환';
+
+  @override
+  String get masterKeySwitched => '마스터 키를 전환했습니다';
+
+  @override
+  String get newKeySpaceTitle => '이 마스터 키로는 기존 항목을 하나도 열 수 없습니다';
+
+  @override
+  String get newKeySpaceBody =>
+      '잘못 입력하셨나요, 아니면 이 키로 별도의 키 공간을 새로 만드시겠습니까? 새 공간에 저장한 항목은 이 마스터 키로만 열 수 있습니다. 기존 항목은 목록에 남지만 복호화되지 않습니다.';
+
+  @override
+  String get newKeySpaceCreate => '새 키 공간 만들기';
+
+  @override
+  String get retryKey => '다시 입력';
+
+  @override
+  String get keySpaceCreated => '새 키 공간을 만들었습니다';
 
   @override
   String get rekeyWarning =>

@@ -399,7 +399,7 @@ abstract class AppLocalizations {
   /// No description provided for @queryInvalidKey.
   ///
   /// In en, this message translates to:
-  /// **'Wrong master key: matching website found but cannot decrypt'**
+  /// **'These entries were not encrypted with the current master key (switch keys and retry)'**
   String get queryInvalidKey;
 
   /// No description provided for @queryNoMatch.
@@ -1199,6 +1199,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wrong master key'**
   String get masterKeyWrong;
+
+  /// No description provided for @switchMasterKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch master key'**
+  String get switchMasterKey;
+
+  /// No description provided for @masterKeySwitched.
+  ///
+  /// In en, this message translates to:
+  /// **'Master key switched'**
+  String get masterKeySwitched;
+
+  /// No description provided for @newKeySpaceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This master key opens none of the existing entries'**
+  String get newKeySpaceTitle;
+
+  /// No description provided for @newKeySpaceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Did you mistype it, or do you want to start a separate key space with it? Entries saved in the new space can only be opened by this master key; existing entries stay listed but will not decrypt.'**
+  String get newKeySpaceBody;
+
+  /// No description provided for @newKeySpaceCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a new key space'**
+  String get newKeySpaceCreate;
+
+  /// No description provided for @retryKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get retryKey;
+
+  /// No description provided for @keySpaceCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'New key space created'**
+  String get keySpaceCreated;
 
   /// No description provided for @rekeyWarning.
   ///

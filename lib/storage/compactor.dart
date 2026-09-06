@@ -30,8 +30,9 @@ class Compactor {
     final active = index.activeRecords.toList(growable: false);
     final now = DateTime.now().toUtc();
     final snapshot = [
-      // keyring 排在最前面：整表重写时绝不能把它丢了，丢了整库就永远打不开。
-      if (index.keyringRecord case final k?) k,
+      // keyring 排在最前面：整表重写时绝不能把它们丢了，丢一把那个密钥空间
+      // 里的记录就永远打不开了。
+      ...index.keyringRecords,
       for (final r in active)
         LogRecord(
           op: LogOp.add,

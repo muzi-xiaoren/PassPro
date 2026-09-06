@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../app_state.dart';
 import '../l10n/app_localizations.dart';
 import 'home_page.dart';
+import 'key_space_prompt.dart';
 
 class MasterKeyPage extends StatefulWidget {
   const MasterKeyPage({super.key});
@@ -44,18 +45,29 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
       _unlocking = true;
       _error = null;
     });
-    final bool ok;
+    final UnlockOutcome outcome;
     try {
-      ok = await app.unlock(pw);
+      outcome = await app.unlock(pw);
     } finally {
       if (mounted) setState(() => _unlocking = false);
     }
     if (!mounted) return;
-    if (!ok) {
-      // 密钥不对就别放进去了：以前是无条件进主界面，用户拿错密钥照样看到
-      // 一列条目，直到点开某条才发现解不出来。
-      setState(() => _error = l10n.masterKeyWrong);
-      return;
+    if (outcome == UnlockOutcome.unknownKey) {
+      // 这把主密钥打不开库里任何条目。可能输错了一个字，也可能是想开个新空间——
+      // 问一句再决定，别像老版本那样无条件放行。
+      final create = await confirmCreateKeySpace(context);
+      if (!mounted) return;
+      if (!create) {
+        setState(() => _error = l10n.masterKeyWrong);
+        return;
+      }
+      setState(() => _unlocking = true);
+      try {
+        await app.createKeySpace(pw);
+      } finally {
+        if (mounted) setState(() => _unlocking = false);
+      }
+      if (!mounted) return;
     }
     navigator.pushReplacement(
       MaterialPageRoute(builder: (_) => const HomePage()),
