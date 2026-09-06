@@ -53,6 +53,24 @@ class MemoryIndex extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 批量应用（整库重加密等）：全部落库后只通知一次，避免刷屏式重建。
+  void applyAll(Iterable<LogRecord> records) {
+    var n = 0;
+    for (final r in records) {
+      n += 1;
+      switch (r.op) {
+        case LogOp.add:
+        case LogOp.update:
+          _records[r.id] = r;
+        case LogOp.delete:
+          _records.remove(r.id);
+      }
+    }
+    if (n == 0) return;
+    _scannedLines += n;
+    notifyListeners();
+  }
+
   /// 按 [config] 搜索并返回排好序（匹配度高→低）的活记录。
   /// 空查询返回全部。匹配大小写不敏感。
   List<LogRecord> search(String query, SearchConfig config) {

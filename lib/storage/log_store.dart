@@ -58,6 +58,19 @@ class LogStore {
     }
   }
 
+  /// 批量追加：整库重加密时一次开一次文件写完，避免逐条开关句柄。
+  Future<void> appendAll(Iterable<LogRecord> records) async {
+    final sink = _file.openWrite(mode: FileMode.append);
+    try {
+      for (final r in records) {
+        sink.writeln(r.toLine());
+      }
+      await sink.flush();
+    } finally {
+      await sink.close();
+    }
+  }
+
   /// 用一组新记录原子替换整个日志（compaction / 从远端覆盖时使用）。
   Future<void> replaceAll(Iterable<LogRecord> records) async {
     final tmp = File('${_file.path}.tmp');

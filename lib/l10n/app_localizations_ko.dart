@@ -606,8 +606,25 @@ class AppLocalizationsKo extends AppLocalizations {
   String get masterKeyChanged => '마스터 키를 변경했습니다';
 
   @override
-  String get changeMasterKeyHint =>
-      '현재 세션에서 사용하는 마스터 키를 교체합니다. 이후의 암호화/복호화에만 영향을 주며 기존 항목은 변경되지 않습니다.';
+  String get masterKeyWrong => '마스터 키가 올바르지 않습니다';
+
+  @override
+  String rekeyWarning(int count) {
+    return '새 마스터 키로 전체 $count개 항목을 다시 암호화합니다. 다른 기기도 새 키로 바꿔야 합니다.';
+  }
+
+  @override
+  String get rekeyWorking => '다시 암호화하는 중…';
+
+  @override
+  String rekeyDone(int count) {
+    return '마스터 키를 변경하고 $count개 항목을 다시 암호화했습니다';
+  }
+
+  @override
+  String rekeySkipped(int count) {
+    return '$count개 항목은 이전 키로 복호화할 수 없어 그대로 두었습니다';
+  }
 
   @override
   String get autoSyncOnLaunch => '실행 시 자동 동기화';

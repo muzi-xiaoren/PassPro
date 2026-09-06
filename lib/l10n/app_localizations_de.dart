@@ -629,8 +629,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String get masterKeyChanged => 'Hauptschlüssel geändert';
 
   @override
-  String get changeMasterKeyHint =>
-      'Wechselt den in der aktuellen Sitzung verwendeten Hauptschlüssel. Betrifft nur die Ver-/Entschlüsselung ab jetzt und ändert bestehende Einträge nicht.';
+  String get masterKeyWrong => 'Falscher Hauptschlüssel';
+
+  @override
+  String rekeyWarning(int count) {
+    return 'Damit werden alle $count Einträge mit dem neuen Hauptschlüssel neu verschlüsselt. Andere Geräte müssen ebenfalls auf den neuen Schlüssel wechseln.';
+  }
+
+  @override
+  String get rekeyWorking => 'Wird neu verschlüsselt …';
+
+  @override
+  String rekeyDone(int count) {
+    return 'Hauptschlüssel geändert; $count Einträge neu verschlüsselt';
+  }
+
+  @override
+  String rekeySkipped(int count) {
+    return '$count Einträge konnten mit dem bisherigen Schlüssel nicht entschlüsselt werden und blieben unverändert';
+  }
 
   @override
   String get autoSyncOnLaunch => 'Auto-Sync beim Start';

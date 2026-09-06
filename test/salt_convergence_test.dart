@@ -82,10 +82,10 @@ void main() {
     );
   }
 
-  test('解锁复用最主流的盐，反复写入不再增加盐', () async {
+  test('解锁后把历史多盐收敛成单盐，之后反复写入也不再长盐', () async {
     final vault = await VaultRepository.open();
 
-    // 造一个 3 盐库：主批次 5 条 + 另外两次会话各 1 条（复刻真实库 102/1/1）。
+    // 造一个 3 盐库：主批次 5 条 + 另外两次会话各 1 条（复刻真实库 95/1/1…）。
     final main = VaultCipher(masterKey);
     for (var i = 0; i < 5; i++) {
       await vault.add(
@@ -108,43 +108,119 @@ void main() {
       VaultCipher.tokenParams(vault.index.activeRecords.first.encryptedPassword!)!.salt,
     );
 
-    // 连续三个"会话"：解锁 → 写一条。以前每轮都会多出一个新盐。
+    // 连续三个"会话"：解锁 → 等后台收敛 → 写一条。
+    // 老版本每轮都会多出一个新盐，解锁预热就得按盐数跑 N 次 PBKDF2
+    //（Windows 上 19 个盐 = 卡十几秒才进得去）。
     for (var session = 0; session < 3; session++) {
       final app = await buildApp(vault);
-      await app.unlock(masterKey);
+      VaultCipher.debugMainIsolatePbkdf2Count = 0;
+      expect(await app.unlock(masterKey), isTrue);
+      await app.pendingMaintenance;
+      expect(saltsOf(vault).length, 1,
+          reason: '第 $session 轮解锁后没收敛成单盐');
+      expect(saltsOf(vault).single, mainSalt, reason: '收敛到的不是最主流的盐');
+      expect(VaultCipher.debugMainIsolatePbkdf2Count, 0,
+          reason: '解锁 + 收敛在 UI 线程上跑了 PBKDF2');
+
       await vault.add(
         website: 'session$session.com',
         username: 'a',
         plaintextPassword: 'p',
         cipher: app.cipher,
       );
-      expect(saltsOf(vault).length, 3,
+      expect(saltsOf(vault).length, 1,
           reason: '第 $session 轮写入引入了新盐，盐数会随使用无限增长');
-      final added = vault.index.activeRecords
-          .firstWhere((r) => r.website == 'session$session.com');
-      expect(
-        base64Url.encode(VaultCipher.tokenParams(added.encryptedPassword!)!.salt),
-        mainSalt,
-        reason: '新条目没有复用最主流的盐',
-      );
     }
 
-    // 收敛后再解锁，预热只需处理这 3 个盐，且 UI 线程零 PBKDF2。
+    // 收敛之后再解锁：只剩一个盐，预热一次 PBKDF2 就够，UI 线程仍然是零。
     final app = await buildApp(vault);
     VaultCipher.debugMainIsolatePbkdf2Count = 0;
-    await app.unlock(masterKey);
+    expect(await app.unlock(masterKey), isTrue);
     expect(VaultCipher.debugMainIsolatePbkdf2Count, 0);
 
-    // 所有条目（含新旧盐）都仍解得开。
+    // 所有条目都仍解得开，收敛没弄丢任何数据。
     for (final r in vault.index.activeRecords) {
       expect(() => app.cipher.decrypt(r.encryptedPassword!), returnsNormally);
     }
+    expect(vault.index.activeCount, 5 + 2 + 3);
   }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('主密钥错误时解锁被拒，正确密钥才放行', () async {
+    final vault = await VaultRepository.open();
+    final seed = VaultCipher(masterKey);
+    for (var i = 0; i < 3; i++) {
+      await vault.add(
+        website: 'site$i.com',
+        username: 'a',
+        plaintextPassword: 'p$i',
+        cipher: seed,
+      );
+    }
+
+    final wrong = await buildApp(vault);
+    // 老版本这里无条件放行：拿错密钥照样进主界面，看得到一列条目，
+    // 直到点开某条才发现解不出来。
+    expect(await wrong.unlock('not-the-master-key'), isFalse);
+    expect(wrong.isUnlocked, isFalse);
+
+    final right = await buildApp(vault);
+    expect(await right.unlock(masterKey), isTrue);
+    expect(right.isUnlocked, isTrue);
+  }, timeout: const Timeout(Duration(minutes: 3)));
+
+  test('空库时任何主密钥都能解锁（没有可校验的密文）', () async {
+    final vault = await VaultRepository.open();
+    final app = await buildApp(vault);
+    expect(await app.unlock('whatever'), isTrue);
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('更换主密钥会用新密钥重加密整库，老密钥不再能解锁', () async {
+    final vault = await VaultRepository.open();
+    final seed = VaultCipher(masterKey);
+    for (var i = 0; i < 4; i++) {
+      await vault.add(
+        website: 'site$i.com',
+        username: 'a',
+        plaintextPassword: 'pw-$i',
+        cipher: seed,
+      );
+    }
+
+    final app = await buildApp(vault);
+    expect(await app.unlock(masterKey), isTrue);
+    await app.pendingMaintenance;
+
+    const newKey = 'new-master-key';
+    VaultCipher.debugMainIsolatePbkdf2Count = 0;
+    final report = await app.rekey(newKey);
+    expect(report.converted, 4);
+    expect(report.skipped, 0);
+    expect(VaultCipher.debugMainIsolatePbkdf2Count, 0,
+        reason: '整库重加密在 UI 线程上跑了 PBKDF2');
+    expect(saltsOf(vault).length, 1, reason: '换密钥后应统一到新盐');
+
+    // 换完之后库里只有新密钥一把：老密钥全解不开，新密钥全解得开。
+    // 老版本换密钥只换会话密钥、不动已有密文，于是同一个库里混着两把钥匙。
+    for (final r in vault.index.activeRecords) {
+      expect(() => app.cipher.decrypt(r.encryptedPassword!), returnsNormally);
+    }
+    final old = await buildApp(vault);
+    expect(await old.unlock(masterKey), isFalse);
+    final next = await buildApp(vault);
+    expect(await next.unlock(newKey), isTrue);
+    expect(
+      {
+        for (final r in vault.index.activeRecords)
+          r.website: next.cipher.decrypt(r.encryptedPassword!),
+      },
+      {for (var i = 0; i < 4; i++) 'site$i.com': 'pw-$i'},
+    );
+  }, timeout: const Timeout(Duration(minutes: 3)));
 
   test('空库解锁不炸，随机生成写盐', () async {
     final vault = await VaultRepository.open();
     final app = await buildApp(vault);
-    await app.unlock(masterKey);
+    expect(await app.unlock(masterKey), isTrue);
     await vault.add(
       website: 'first.com',
       username: 'a',

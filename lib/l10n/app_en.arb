@@ -367,7 +367,32 @@
   "confirmNewMasterKey": "Confirm new master key",
   "masterKeyMismatch": "The two master keys do not match",
   "masterKeyChanged": "Master key changed",
-  "changeMasterKeyHint": "Hot-swaps the master key used by the current session. It only affects encryption/decryption from now on and does not modify existing entries.",
+  "masterKeyWrong": "Wrong master key",
+  "rekeyWarning": "This will re-encrypt all {count} entries with the new master key. Other devices must switch to the new key as well.",
+  "@rekeyWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rekeyWorking": "Re-encrypting…",
+  "rekeyDone": "Master key changed; {count} entries re-encrypted",
+  "@rekeyDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rekeySkipped": "{count} entries could not be decrypted with the previous key and were left unchanged",
+  "@rekeySkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "autoSyncOnLaunch": "Auto-sync on launch",
   "autoSyncOnLaunchSub": "Pull and merge from the remote each time the app opens",
   "sectionBackground": "Background image",

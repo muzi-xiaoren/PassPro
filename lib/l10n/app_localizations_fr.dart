@@ -628,8 +628,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get masterKeyChanged => 'Clé maître modifiée';
 
   @override
-  String get changeMasterKeyHint =>
-      'Change la clé maître utilisée par la session actuelle. N\'affecte que le chiffrement/déchiffrement à partir de maintenant et ne modifie pas les entrées existantes.';
+  String get masterKeyWrong => 'Clé maître incorrecte';
+
+  @override
+  String rekeyWarning(int count) {
+    return 'Cela rechiffrera les $count entrées avec la nouvelle clé maître. Les autres appareils devront aussi utiliser la nouvelle clé.';
+  }
+
+  @override
+  String get rekeyWorking => 'Rechiffrement en cours…';
+
+  @override
+  String rekeyDone(int count) {
+    return 'Clé maître modifiée ; $count entrées rechiffrées';
+  }
+
+  @override
+  String rekeySkipped(int count) {
+    return '$count entrées n\'ont pas pu être déchiffrées avec l\'ancienne clé et ont été conservées telles quelles';
+  }
 
   @override
   String get autoSyncOnLaunch => 'Synchronisation auto au démarrage';

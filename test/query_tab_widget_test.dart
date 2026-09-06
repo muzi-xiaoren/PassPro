@@ -124,7 +124,10 @@ void main() {
 
     final app = (await tester.runAsync(buildAppState))!;
     // 解锁现在会等预热完成（真实 App 里解锁页转圈等的就是这一步）。
-    await tester.runAsync(() => app.unlock(masterKey));
+    await tester.runAsync(() async {
+      await app.unlock(masterKey);
+      await app.pendingMaintenance; // 等解锁后的后台盐收敛跑完再开始手势
+    });
 
     // 解锁后再"同步拉进来"一批新盐的记录：预热只覆盖解锁那一刻已有的盐，
     // 启动自动同步合并进来的新记录必然是冷的。网站名与已有记录不重叠，
@@ -169,7 +172,10 @@ void main() {
     addTearDown(tester.view.reset);
 
     final app = (await tester.runAsync(buildAppState))!;
-    await tester.runAsync(() => app.unlock(masterKey));
+    await tester.runAsync(() async {
+      await app.unlock(masterKey);
+      await app.pendingMaintenance; // 等解锁后的后台盐收敛跑完再开始手势
+    });
     await pumpHome(tester, app);
     VaultCipher.debugMainIsolatePbkdf2Count = 0;
 
@@ -204,7 +210,10 @@ void main() {
     addTearDown(tester.view.reset);
 
     final app = (await tester.runAsync(buildAppState))!;
-    await tester.runAsync(() => app.unlock(masterKey));
+    await tester.runAsync(() async {
+      await app.unlock(masterKey);
+      await app.pendingMaintenance; // 等解锁后的后台盐收敛跑完再开始手势
+    });
     await pumpHome(tester, app);
     VaultCipher.debugMainIsolatePbkdf2Count = 0;
 

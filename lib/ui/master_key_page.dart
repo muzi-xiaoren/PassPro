@@ -18,6 +18,8 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
   // 解锁要等后台把各盐的密钥派生完（~0.2s/盐，手机上更久）。
   // 期间禁用按钮并转圈，避免用户进主界面后再撞上同步 PBKDF2。
   bool _unlocking = false;
+  // 主密钥错时的提示（主密钥不落盘，只能拿"库里有没有一条能解开"来判定）。
+  String? _error;
 
   @override
   void initState() {
@@ -36,14 +38,25 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
     if (_unlocking) return;
     final pw = _ctrl.text.isEmpty ? ' ' : _ctrl.text;
     final app = context.read<AppState>();
+    final l10n = AppLocalizations.of(context)!;
     final navigator = Navigator.of(context);
-    setState(() => _unlocking = true);
+    setState(() {
+      _unlocking = true;
+      _error = null;
+    });
+    final bool ok;
     try {
-      await app.unlock(pw);
+      ok = await app.unlock(pw);
     } finally {
       if (mounted) setState(() => _unlocking = false);
     }
     if (!mounted) return;
+    if (!ok) {
+      // 密钥不对就别放进去了：以前是无条件进主界面，用户拿错密钥照样看到
+      // 一列条目，直到点开某条才发现解不出来。
+      setState(() => _error = l10n.masterKeyWrong);
+      return;
+    }
     navigator.pushReplacement(
       MaterialPageRoute(builder: (_) => const HomePage()),
     );
@@ -87,8 +100,12 @@ class _MasterKeyPageState extends State<MasterKeyPage> {
                   enabled: !_unlocking,
                   textInputAction: TextInputAction.go,
                   onSubmitted: (_) => _unlock(),
+                  onChanged: (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
                   decoration: InputDecoration(
                     labelText: l10n.masterKeyLabel,
+                    errorText: _error,
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(_obscure

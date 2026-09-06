@@ -328,6 +328,8 @@ class _ChangeKeyDialog extends StatefulWidget {
 class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
   final _key = TextEditingController();
   late bool _obscure;
+  /// 整库重加密期间禁用输入与按钮，避免中途再点一次。
+  bool _busy = false;
 
   @override
   void initState() {
@@ -343,18 +345,29 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
   }
 
   Future<void> _submit() async {
+    if (_busy) return;
     final l10n = AppLocalizations.of(context)!;
     // 与解锁一致：留空 → 单空格
     final newPw = _key.text.isEmpty ? ' ' : _key.text;
+    final app = context.read<AppState>();
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    // 先关对话框再等预热：换完密钥同样要把密钥派生好，否则回到列表后
-    // 第一次点击又会在 UI 线程上跑 PBKDF2。
+    setState(() => _busy = true);
+    final ReencryptReport report;
+    try {
+      report = await app.rekey(newPw);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted) return;
     navigator.pop();
-    messenger.showSnackBar(
-      SnackBar(content: Text(l10n.masterKeyChanged)),
-    );
-    await context.read<AppState>().rekey(newPw);
+    final text = report.didNothing
+        ? l10n.masterKeyChanged
+        : report.skipped == 0
+            ? l10n.rekeyDone(report.converted)
+            : '${l10n.rekeyDone(report.converted)} '
+                '${l10n.rekeySkipped(report.skipped)}';
+    messenger.showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
@@ -370,6 +383,7 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
             controller: _key,
             obscureText: _obscure,
             autofocus: true,
+            enabled: !_busy,
             onSubmitted: (_) => _submit(),
             decoration: InputDecoration(
               labelText: l10n.newMasterKey,
@@ -391,19 +405,25 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
           ),
           const SizedBox(height: 12),
           Text(
-            l10n.changeMasterKeyHint,
+            l10n.rekeyWarning(context.read<AppState>().vault.index.activeCount),
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
           child: Text(l10n.cancel),
         ),
         FilledButton(
-          onPressed: _submit,
-          child: Text(l10n.save),
+          onPressed: _busy ? null : _submit,
+          child: _busy
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.save),
         ),
       ],
     );

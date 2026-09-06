@@ -97,6 +97,33 @@ void main() {
     }
   });
 
+  test('预热与另一次预热重叠时不会静默失败（isolate 闭包不得捕获 Future）',
+      () async {
+    // 真实触发点：解锁后的后台盐收敛还在派生，用户已经在查询框点了一下，
+    // 两次 warmUp 撞在一起 → 第二次会命中 _inflight。
+    // 老实现的 Isolate.run 闭包和 `waits`/`running` 这些 Future 共用作用域，
+    // Dart 会抛 "object is unsendable - _Future"，预热整个失效，解密退回
+    // UI 线程同步跑 PBKDF2 —— 正是我们要根治的那个卡死。
+    const pw = 'master-key';
+    final tokens = [
+      for (var i = 0; i < 3; i++) VaultCipher(pw).encrypt('secret-$i'),
+    ];
+    final reader = VaultCipher(pw);
+
+    final first = reader.warmUpForTokens([tokens[0]]); // 故意不 await
+    final second = reader.warmUpForTokens(tokens); // 与 first 共享盐 0
+    await expectLater(Future.wait([first, second]), completes);
+
+    for (final t in tokens) {
+      expect(reader.isKeyWarm(t), isTrue, reason: '预热漏了：$t');
+    }
+    VaultCipher.debugMainIsolatePbkdf2Count = 0;
+    for (final t in tokens) {
+      reader.decrypt(t);
+    }
+    expect(VaultCipher.debugMainIsolatePbkdf2Count, 0);
+  });
+
   test('warmUp 对空/非法 token 安全返回', () async {
     final c = VaultCipher('master-key');
     await c.warmUpForTokens([null, '', 'not-a-token', '???']);

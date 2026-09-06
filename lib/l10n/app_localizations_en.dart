@@ -624,8 +624,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get masterKeyChanged => 'Master key changed';
 
   @override
-  String get changeMasterKeyHint =>
-      'Hot-swaps the master key used by the current session. It only affects encryption/decryption from now on and does not modify existing entries.';
+  String get masterKeyWrong => 'Wrong master key';
+
+  @override
+  String rekeyWarning(int count) {
+    return 'This will re-encrypt all $count entries with the new master key. Other devices must switch to the new key as well.';
+  }
+
+  @override
+  String get rekeyWorking => 'Re-encrypting…';
+
+  @override
+  String rekeyDone(int count) {
+    return 'Master key changed; $count entries re-encrypted';
+  }
+
+  @override
+  String rekeySkipped(int count) {
+    return '$count entries could not be decrypted with the previous key and were left unchanged';
+  }
 
   @override
   String get autoSyncOnLaunch => 'Auto-sync on launch';

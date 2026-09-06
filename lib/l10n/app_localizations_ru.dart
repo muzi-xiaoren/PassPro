@@ -627,8 +627,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String get masterKeyChanged => 'Мастер-ключ изменён';
 
   @override
-  String get changeMasterKeyHint =>
-      'Меняет мастер-ключ, используемый в текущем сеансе. Влияет только на последующее шифрование/расшифровку и не изменяет существующие записи.';
+  String get masterKeyWrong => 'Неверный мастер-ключ';
+
+  @override
+  String rekeyWarning(int count) {
+    return 'Все $count записей будут перешифрованы новым мастер-ключом. На других устройствах тоже нужно перейти на новый ключ.';
+  }
+
+  @override
+  String get rekeyWorking => 'Перешифрование…';
+
+  @override
+  String rekeyDone(int count) {
+    return 'Мастер-ключ изменён; перешифровано записей: $count';
+  }
+
+  @override
+  String rekeySkipped(int count) {
+    return 'Записей не удалось расшифровать прежним ключом и оставлено без изменений: $count';
+  }
 
   @override
   String get autoSyncOnLaunch => 'Автосинхронизация при запуске';

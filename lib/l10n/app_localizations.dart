@@ -1194,11 +1194,35 @@ abstract class AppLocalizations {
   /// **'Master key changed'**
   String get masterKeyChanged;
 
-  /// No description provided for @changeMasterKeyHint.
+  /// No description provided for @masterKeyWrong.
   ///
   /// In en, this message translates to:
-  /// **'Hot-swaps the master key used by the current session. It only affects encryption/decryption from now on and does not modify existing entries.'**
-  String get changeMasterKeyHint;
+  /// **'Wrong master key'**
+  String get masterKeyWrong;
+
+  /// No description provided for @rekeyWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This will re-encrypt all {count} entries with the new master key. Other devices must switch to the new key as well.'**
+  String rekeyWarning(int count);
+
+  /// No description provided for @rekeyWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-encrypting…'**
+  String get rekeyWorking;
+
+  /// No description provided for @rekeyDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Master key changed; {count} entries re-encrypted'**
+  String rekeyDone(int count);
+
+  /// No description provided for @rekeySkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} entries could not be decrypted with the previous key and were left unchanged'**
+  String rekeySkipped(int count);
 
   /// No description provided for @autoSyncOnLaunch.
   ///

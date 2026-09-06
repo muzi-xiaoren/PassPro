@@ -606,8 +606,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String get masterKeyChanged => 'マスターキーを変更しました';
 
   @override
-  String get changeMasterKeyHint =>
-      '現在のセッションで使用するマスターキーを切り替えます。以降の暗号化/復号にのみ影響し、既存のエントリは変更されません。';
+  String get masterKeyWrong => 'マスターキーが違います';
+
+  @override
+  String rekeyWarning(int count) {
+    return '新しいマスターキーで全 $count 件を暗号化し直します。他の端末も新しいキーに切り替える必要があります。';
+  }
+
+  @override
+  String get rekeyWorking => '再暗号化しています…';
+
+  @override
+  String rekeyDone(int count) {
+    return 'マスターキーを変更し、$count 件を再暗号化しました';
+  }
+
+  @override
+  String rekeySkipped(int count) {
+    return '$count 件は以前のキーで復号できなかったため、そのまま残しました';
+  }
 
   @override
   String get autoSyncOnLaunch => '起動時に自動同期';

@@ -602,7 +602,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get masterKeyChanged => '主密钥已更换';
 
   @override
-  String get changeMasterKeyHint => '热更换当前会话使用的主密钥，仅影响之后的加密/解密，不会改动已有条目。';
+  String get masterKeyWrong => '主密钥错误，请重新输入';
+
+  @override
+  String rekeyWarning(int count) {
+    return '将用新主密钥重新加密全部 $count 条记录，其他设备也需要改用新主密钥。';
+  }
+
+  @override
+  String get rekeyWorking => '正在重新加密…';
+
+  @override
+  String rekeyDone(int count) {
+    return '已更换主密钥，重新加密 $count 条记录';
+  }
+
+  @override
+  String rekeySkipped(int count) {
+    return '$count 条无法用原主密钥解密，已原样保留';
+  }
 
   @override
   String get autoSyncOnLaunch => '进入软件时自动同步';

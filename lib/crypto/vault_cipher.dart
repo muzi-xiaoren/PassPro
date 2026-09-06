@@ -30,6 +30,9 @@ class VaultCipher {
   /// 本会话所有写入统一使用的盐。
   final Uint8List _writeSalt;
 
+  /// 本会话写入使用的盐（调用方用它判断某条密文是否已是"当前格式"）。
+  Uint8List get writeSalt => _writeSalt;
+
   static const int _version = 0x01;
   static const int _kdfPbkdf2Sha256 = 1;
   static const int _iterations = 100000;
@@ -95,16 +98,12 @@ class VaultCipher {
     }
 
     if (pending.isNotEmpty) {
-      final password = _password;
-      final batch = Isolate.run(() => [
-            for (final p in pending)
-              (
-                cacheKey: p.cacheKey,
-                key: _pbkdf2(password, p.salt, p.iterations),
-              ),
-          ]).then((derived) {
-        for (final d in derived) {
-          _keyCache[d.cacheKey] = d.key;
+      final batch = _deriveInIsolate(
+        _password,
+        [for (final p in pending) (salt: p.salt, iterations: p.iterations)],
+      ).then((derived) {
+        for (var i = 0; i < pending.length; i++) {
+          _keyCache[pending[i].cacheKey] = derived[i];
         }
       }).whenComplete(() {
         for (final p in pending) {
@@ -122,6 +121,21 @@ class VaultCipher {
     await Future.wait(waits);
   }
 
+  /// 后台 isolate 里批量跑 PBKDF2。
+  ///
+  /// **必须单独开一个方法**：`Isolate.run` 的闭包会把所在作用域的捕获变量整包
+  /// 送过去，如果和 `waits` / `_inflight` 里的 Future 共用作用域，Dart 会以
+  /// "object is unsendable - _Future" 抛错——于是预热静默失败，解密退回 UI 线程
+  /// 同步派生，正好把我们想根治的卡死又放回来。这里的作用域只有两个可发送的
+  /// 参数，不会再踩到。
+  static Future<List<Uint8List>> _deriveInIsolate(
+    String password,
+    List<({Uint8List salt, int iterations})> jobs,
+  ) =>
+      Isolate.run(
+        () => [for (final j in jobs) _pbkdf2(password, j.salt, j.iterations)],
+      );
+
   /// 为一批密文 token 预热密钥：解析出各自的盐，去重后一次性在后台派生好。
   /// 查询路径在解密前调它，保证之后的 [decrypt] 全部命中缓存。
   Future<void> warmUpForTokens(Iterable<String?> tokens) {
@@ -133,6 +147,35 @@ class VaultCipher {
     }
     if (params.isEmpty) return Future<void>.value();
     return warmUp(params);
+  }
+
+  /// 预热本会话写入用的密钥（[encrypt] 会用到）。换主密钥时先调它，
+  /// 之后整库重加密就不会在 UI 线程上跑 PBKDF2。
+  Future<void> warmUpWriteKey() =>
+      warmUp([(salt: _writeSalt, iterations: _iterations)]);
+
+  /// 该 token 的密钥是否已在缓存里（解它不会触发 PBKDF2）。
+  /// 整库重加密用它兜底：预热漏掉的记录直接跳过，绝不在 UI 线程上补派生。
+  bool isKeyWarm(String token) {
+    final p = tokenParams(token);
+    if (p == null) return false;
+    return _keyCache.containsKey(_cacheKeyFor(p.salt, p.iterations));
+  }
+
+  /// 写入用的密钥是否已在缓存里（[encrypt] 不会触发 PBKDF2）。
+  bool get isWriteKeyWarm =>
+      _keyCache.containsKey(_cacheKeyFor(_writeSalt, _iterations));
+
+  /// 该 token 是否已经用本会话的写盐 + 当前迭代次数加密。
+  /// 用于挑出"还在用老盐"的记录做收敛重加密。
+  bool usesWriteParams(String token) {
+    final p = tokenParams(token);
+    if (p == null || p.iterations != _iterations) return false;
+    if (p.salt.length != _writeSalt.length) return false;
+    for (var i = 0; i < p.salt.length; i++) {
+      if (p.salt[i] != _writeSalt[i]) return false;
+    }
+    return true;
   }
 
   /// 与 [decrypt] 相同，但该 token 的密钥未缓存时先在后台 isolate 派生，
