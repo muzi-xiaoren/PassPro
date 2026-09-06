@@ -1203,20 +1203,20 @@ abstract class AppLocalizations {
   /// No description provided for @rekeyWarning.
   ///
   /// In en, this message translates to:
-  /// **'This will re-encrypt all {count} entries with the new master key. Other devices must switch to the new key as well.'**
-  String rekeyWarning(int count);
+  /// **'The new master key takes effect immediately. Other devices can still be opened with the old key until they sync.'**
+  String get rekeyWarning;
+
+  /// No description provided for @rekeyNeedsSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync once before changing the master key'**
+  String get rekeyNeedsSync;
 
   /// No description provided for @rekeyWorking.
   ///
   /// In en, this message translates to:
-  /// **'Re-encrypting…'**
+  /// **'Working…'**
   String get rekeyWorking;
-
-  /// No description provided for @rekeyDone.
-  ///
-  /// In en, this message translates to:
-  /// **'Master key changed; {count} entries re-encrypted'**
-  String rekeyDone(int count);
 
   /// No description provided for @rekeySkipped.
   ///

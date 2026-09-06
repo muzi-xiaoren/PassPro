@@ -368,23 +368,9 @@
   "masterKeyMismatch": "The two master keys do not match",
   "masterKeyChanged": "Master key changed",
   "masterKeyWrong": "Wrong master key",
-  "rekeyWarning": "This will re-encrypt all {count} entries with the new master key. Other devices must switch to the new key as well.",
-  "@rekeyWarning": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "rekeyWorking": "Re-encrypting…",
-  "rekeyDone": "Master key changed; {count} entries re-encrypted",
-  "@rekeyDone": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
+  "rekeyWarning": "The new master key takes effect immediately. Other devices can still be opened with the old key until they sync.",
+  "rekeyNeedsSync": "Sync once before changing the master key",
+  "rekeyWorking": "Working…",
   "rekeySkipped": "{count} entries could not be decrypted with the previous key and were left unchanged",
   "@rekeySkipped": {
     "placeholders": {

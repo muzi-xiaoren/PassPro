@@ -47,6 +47,22 @@ class _HomePageState extends State<HomePage>
     super.dispose();
   }
 
+  /// 换主密钥现在会重写整库，所以和增删改一样要"前拉后推"：
+  ///   - 不先拉：远端还没拉下来的记录不会被转换，等以后拉回来仍挂在**老密钥**
+  ///     上，那时用户多半已经把老密钥忘了。
+  ///   - 不后推：其他设备拿不到新密钥下的密文。
+  Future<void> _changeMasterKey(BuildContext context) async {
+    if (!await _maybePromptPull(context)) return;
+    if (!context.mounted) return;
+    final changed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // 重加密要跑几秒，别让点一下外面就丢了反馈
+      builder: (_) => const _ChangeKeyDialog(),
+    );
+    if (changed != true || !context.mounted) return;
+    await _maybePromptPush(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -60,10 +76,7 @@ class _HomePageState extends State<HomePage>
           IconButton(
             tooltip: l10n.changeMasterKey,
             icon: const Icon(Icons.key_outlined),
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) => const _ChangeKeyDialog(),
-            ),
+            onPressed: () => _changeMasterKey(context),
           ),
           IconButton(
             tooltip: l10n.lock,
@@ -328,8 +341,10 @@ class _ChangeKeyDialog extends StatefulWidget {
 class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
   final _key = TextEditingController();
   late bool _obscure;
-  /// 整库重加密期间禁用输入与按钮，避免中途再点一次。
+  /// 换密钥期间禁用输入与按钮，避免中途再点一次。
   bool _busy = false;
+  /// 换不成时的原因（目前只有"得先同步一次"）。
+  String? _error;
 
   @override
   void initState() {
@@ -352,28 +367,33 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
     final app = context.read<AppState>();
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    setState(() => _busy = true);
-    final ReencryptReport report;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final RekeyResult result;
     try {
-      report = await app.rekey(newPw);
+      result = await app.rekey(newPw);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
     if (!mounted) return;
-    navigator.pop();
-    final text = report.didNothing
+    if (!result.ok) {
+      // 库还没迁移到库密钥，这时候换密钥要重写整库，和别的设备撞上会搅乱数据。
+      setState(() => _error = l10n.rekeyNeedsSync);
+      return;
+    }
+    navigator.pop(true);
+    final text = result.leftBehind == 0
         ? l10n.masterKeyChanged
-        : report.skipped == 0
-            ? l10n.rekeyDone(report.converted)
-            : '${l10n.rekeyDone(report.converted)} '
-                '${l10n.rekeySkipped(report.skipped)}';
+        : '${l10n.masterKeyChanged} ${l10n.rekeySkipped(result.leftBehind)}';
     messenger.showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return AlertDialog(
+    final dialog = AlertDialog(
       title: Text(l10n.changeMasterKey),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -405,8 +425,12 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
           ),
           const SizedBox(height: 12),
           Text(
-            l10n.rekeyWarning(context.read<AppState>().vault.index.activeCount),
-            style: Theme.of(context).textTheme.bodySmall,
+            _busy ? l10n.rekeyWorking : (_error ?? l10n.rekeyWarning),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: _error == null
+                      ? null
+                      : Theme.of(context).colorScheme.error,
+                ),
           ),
         ],
       ),
@@ -427,6 +451,9 @@ class _ChangeKeyDialogState extends State<_ChangeKeyDialog> {
         ),
       ],
     );
+    // 重加密跑起来之后返回键/点外面都别关：关了照样在后台跑完，用户却看不到
+    // 结果，也不会被提示把新密钥推给其他设备。
+    return PopScope(canPop: !_busy, child: dialog);
   }
 }
 

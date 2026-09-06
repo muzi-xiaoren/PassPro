@@ -630,17 +630,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get masterKeyWrong => 'Неверный мастер-ключ';
 
   @override
-  String rekeyWarning(int count) {
-    return 'Все $count записей будут перешифрованы новым мастер-ключом. На других устройствах тоже нужно перейти на новый ключ.';
-  }
+  String get rekeyWarning =>
+      'Новый мастер-ключ вступает в силу сразу. Другие устройства до синхронизации по-прежнему открываются старым ключом.';
 
   @override
-  String get rekeyWorking => 'Перешифрование…';
+  String get rekeyNeedsSync =>
+      'Синхронизируйтесь один раз перед сменой мастер-ключа';
 
   @override
-  String rekeyDone(int count) {
-    return 'Мастер-ключ изменён; перешифровано записей: $count';
-  }
+  String get rekeyWorking => 'Обработка…';
 
   @override
   String rekeySkipped(int count) {

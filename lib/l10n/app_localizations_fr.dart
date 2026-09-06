@@ -631,17 +631,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get masterKeyWrong => 'Clé maître incorrecte';
 
   @override
-  String rekeyWarning(int count) {
-    return 'Cela rechiffrera les $count entrées avec la nouvelle clé maître. Les autres appareils devront aussi utiliser la nouvelle clé.';
-  }
+  String get rekeyWarning =>
+      'La nouvelle clé maître prend effet immédiatement. Les autres appareils restent ouvrables avec l\'ancienne clé jusqu\'à leur synchronisation.';
 
   @override
-  String get rekeyWorking => 'Rechiffrement en cours…';
+  String get rekeyNeedsSync =>
+      'Synchronisez une fois avant de changer la clé maître';
 
   @override
-  String rekeyDone(int count) {
-    return 'Clé maître modifiée ; $count entrées rechiffrées';
-  }
+  String get rekeyWorking => 'Traitement en cours…';
 
   @override
   String rekeySkipped(int count) {

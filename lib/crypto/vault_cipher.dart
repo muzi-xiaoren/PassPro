@@ -5,35 +5,57 @@ import 'dart:typed_data';
 
 import 'package:pointycastle/export.dart';
 
-/// 会话级加解密器：持有主密码，按需派生密钥并缓存。
+/// 会话级加解密器。
 ///
-/// 算法：
-///   - 密钥派生 (KDF)：PBKDF2-HMAC-SHA256，随机盐 + 高迭代，输出 32 字节。
-///   - 对称加密：AES-256-GCM（AEAD，自带完整性认证标签，无需额外 HMAC）。
+/// **两层密钥（v2）**：
+/// ```
+/// 库密钥(32 字节随机，一库一把，永不变) --AES-GCM--> 每条记录的密文
+/// 主密钥 --PBKDF2(盐)--> 包裹密钥 --AES-GCM--> 库密钥   ← 这一小块叫 keyring
+/// ```
+/// 记录只认库密钥，所以记录里**不带盐、也不跑 PBKDF2**；库密钥是满熵随机数，
+/// 没有"预计算彩虹表"这回事，盐对它没有意义。整库一辈子只有 keyring 那一个盐，
+/// 解锁 = 拆 keyring = **恒定 1 次 PBKDF2**，跟库里有多少条、用了多少年无关。
+///
+/// 换主密钥因此是 O(1)：拿新主密钥把**同一把库密钥**重新包一遍，记录一条不动。
+///
+/// **v1（老格式，只读）**：每条密文自带盐，密钥 = PBKDF2(主密钥, 该条的盐)。
+/// 老版本每个会话都随机生成写盐，于是"用一阵子就攒出十几二十个盐"，解锁要按
+/// 盐数跑 N 次 PBKDF2——Windows 上卡十几秒进不去就是这么来的。v1 密文永远解得开，
+/// 迁移时逐条转成 v2；转不动的（主密钥不对）原样留着，不丢数据。
 ///
 /// Token 自描述，便于离线迁移脚本产出与本类完全一致的格式：
-///   base64url( 0x01 || kdfId(1)=1 || iter(4,BE) || saltLen(1) || salt || nonce(12) || ciphertext+tag(16) )
-///
-/// 盐随每条 token 一起存储，因此无需任何额外的同步通道/元数据文件；
-/// 同一盐派生出的密钥会被缓存，整库通常只需一次 PBKDF2。
+///   v1 记录 base64url( 0x01 || kdfId(1) || iter(4,BE) || saltLen(1) || salt || nonce(12) || ct+tag(16) )
+///   v2 记录 base64url( 0x02 || nonce(12) || ct+tag(16) )
+///   keyring base64url( 0x11 || kdfId(1) || iter(4,BE) || saltLen(1) || salt || nonce(12) || wrapped+tag(48) )
 class VaultCipher {
-  /// [writeSalt] 为空时随机生成。调用方应传入库里已在用的盐——每个会话都随机
-  /// 生成新盐的话，库里的盐数会随使用次数无限增长，解锁预热就得跑 N 次
-  /// PBKDF2（每次 ~0.2s，手机上 0.6~1.2s）。同一库同一主密钥下复用盐不降低
-  /// 安全性：盐的作用是阻止跨库预计算，而每条记录的 GCM nonce 仍各自随机。
-  /// 主流密码管理器本来就是"一库一盐派生一把主密钥"。
-  VaultCipher(this._password, {Uint8List? writeSalt})
-      : _writeSalt = writeSalt ?? _randomBytes(16);
+  /// [vaultKey] 为 null 表示这个库还没迁移到 v2（多设备时要等同步对齐才敢建
+  /// keyring，见 AppState），这期间读写都退回 v1，用 [legacyWriteSalt] 派生写密钥。
+  VaultCipher(
+    this._password, {
+    Uint8List? vaultKey,
+    Uint8List? legacyWriteSalt,
+  })  : _vaultKey = vaultKey,
+        _legacyWriteSalt = legacyWriteSalt ?? _randomBytes(_saltLen);
 
   final String _password;
 
-  /// 本会话所有写入统一使用的盐。
-  final Uint8List _writeSalt;
+  /// 整库共用的加密密钥；null = 还在 v1 模式。
+  final Uint8List? _vaultKey;
 
-  /// 本会话写入使用的盐（调用方用它判断某条密文是否已是"当前格式"）。
-  Uint8List get writeSalt => _writeSalt;
+  /// v1 模式下所有写入使用的盐。
+  final Uint8List _legacyWriteSalt;
 
-  static const int _version = 0x01;
+  bool get hasVaultKey => _vaultKey != null;
+
+  /// 当前库密钥（换主密钥时要拿它重新包一遍）。还在 v1 模式时为 null。
+  Uint8List? get vaultKey => _vaultKey;
+
+  /// v1 模式下的写盐（调用方用它判断某条 v1 密文是否已是"当前会话格式"）。
+  Uint8List get legacyWriteSalt => _legacyWriteSalt;
+
+  static const int _v1 = 0x01;
+  static const int _v2 = 0x02;
+  static const int _keyringTag = 0x11;
   static const int _kdfPbkdf2Sha256 = 1;
   static const int _iterations = 100000;
 
@@ -42,25 +64,143 @@ class VaultCipher {
   static const int _saltLen = 16;
   static const int _nonceLen = 12;
   static const int _tagBits = 128;
+  static const int _tagLen = 16;
+  static const int _vaultKeyLen = 32;
 
   static final Random _rng = Random.secure();
 
-  /// 已派生密钥缓存：'<saltBase64>|<iter>' → 32 字节密钥。
+  /// 已派生的 v1 密钥缓存：'<saltBase64>|<iter>' → 32 字节密钥。
   final Map<String, Uint8List> _keyCache = {};
 
   /// 正在后台派生中的密钥：cacheKey → 完成时缓存已写好的 Future。
-  /// 用来给并发的 [warmUp]/[decryptAsync] 去重——否则连点几下就会 spawn
-  /// 好几个 isolate 重复算同一把密钥，在手机上直接把 CPU 打满。
+  /// 用来给并发的 [warmUp] 去重——否则连点几下就会 spawn 好几个 isolate
+  /// 重复算同一把密钥，在手机上直接把 CPU 打满。
   final Map<String, Future<void>> _inflight = {};
 
   /// 仅用于测试/诊断：当前 isolate（UI 线程）上真正跑过的 PBKDF2 次数。
-  /// 用户手势路径应恒为 0，一旦增长就说明又有同步解密堵住了主线程。
+  /// 用户手势路径应恒为 0，一旦增长就说明又有同步派生堵住了主线程。
   static int debugMainIsolatePbkdf2Count = 0;
+
+  // ==================== 库密钥 / keyring ====================
+
+  /// 生成一把新的库密钥（迁移时一库只生成一次）。
+  static Uint8List newVaultKey() => _randomBytes(_vaultKeyLen);
+
+  /// 用主密钥把库密钥包起来，产出可直接存进日志的 keyring 串。
+  /// **会跑一次 PBKDF2**，UI 路径请用 [wrapVaultKeyAsync]。
+  static String wrapVaultKey(
+    String password,
+    Uint8List vaultKey, {
+    Uint8List? salt,
+    int iterations = _iterations,
+  }) {
+    final s = salt ?? _randomBytes(_saltLen);
+    debugMainIsolatePbkdf2Count++;
+    final wrapKey = _pbkdf2(password, s, iterations);
+    final nonce = _randomBytes(_nonceLen);
+    final ct = _gcm(
+      forEncryption: true,
+      key: wrapKey,
+      nonce: nonce,
+      input: vaultKey,
+    );
+    final out = BytesBuilder()
+      ..addByte(_keyringTag)
+      ..addByte(_kdfPbkdf2Sha256)
+      ..add(_u32be(iterations))
+      ..addByte(s.length)
+      ..add(s)
+      ..add(nonce)
+      ..add(ct);
+    return base64Url.encode(out.toBytes());
+  }
+
+  /// 拆 keyring 取回库密钥；主密钥不对（GCM 认证标签校验失败）或数据坏 → null。
+  ///
+  /// 这就是新的主密钥校验：**精确判定，不用再拿"有没有一条记录解得开"去猜**。
+  /// **会跑一次 PBKDF2**，UI 路径请用 [unwrapVaultKeyAsync]。
+  static Uint8List? unwrapVaultKey(String password, String blob) {
+    final Uint8List data;
+    try {
+      data = base64Url.decode(_padBase64(blob));
+    } catch (_) {
+      return null;
+    }
+    if (data.length < 1 + 1 + 4 + 1 + _saltLen + _nonceLen + _tagLen) {
+      return null;
+    }
+    if (data[0] != _keyringTag) return null;
+    var o = 1;
+    if (data[o++] != _kdfPbkdf2Sha256) return null;
+    final iterations = _readU32be(data, o);
+    o += 4;
+    final saltLen = data[o++];
+    if (o + saltLen + _nonceLen + _tagLen > data.length) return null;
+    final salt = Uint8List.fromList(data.sublist(o, o + saltLen));
+    o += saltLen;
+    final nonce = Uint8List.fromList(data.sublist(o, o + _nonceLen));
+    o += _nonceLen;
+    final ct = Uint8List.fromList(data.sublist(o));
+    debugMainIsolatePbkdf2Count++;
+    final wrapKey = _pbkdf2(password, salt, iterations);
+    try {
+      final key =
+          _gcm(forEncryption: false, key: wrapKey, nonce: nonce, input: ct);
+      return key.length == _vaultKeyLen ? key : null;
+    } catch (_) {
+      return null; // 标签校验失败 = 主密钥不对
+    }
+  }
+
+  /// [wrapVaultKey] 的后台版：PBKDF2 在独立 isolate 里跑，UI 线程零阻塞。
+  static Future<String> wrapVaultKeyAsync(
+    String password,
+    Uint8List vaultKey,
+  ) =>
+      Isolate.run(() => wrapVaultKey(password, vaultKey));
+
+  /// [unwrapVaultKey] 的后台版：解锁走这条，转圈期间 UI 不掉帧。
+  static Future<Uint8List?> unwrapVaultKeyAsync(
+    String password,
+    String blob,
+  ) =>
+      Isolate.run(() => unwrapVaultKey(password, blob));
+
+  /// 用**自己的主密钥**把 [vaultKey] 包成 keyring（后台 isolate 跑 PBKDF2）。
+  /// 主密钥不出这个对象。
+  Future<String> wrapVaultKeyWithOwnPassword(Uint8List vaultKey) =>
+      wrapVaultKeyAsync(_password, vaultKey);
+
+  /// 同一个主密钥、换上库密钥的新会话 cipher（老库迁移到 v2 时用）。
+  VaultCipher upgraded(Uint8List vaultKey) =>
+      VaultCipher(_password, vaultKey: vaultKey);
+
+  /// 是不是一条 keyring 串。
+  static bool isKeyring(String blob) {
+    try {
+      final d = base64Url.decode(_padBase64(blob));
+      return d.isNotEmpty && d[0] == _keyringTag;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 这条密文是不是还停在 v1（需要迁移到库密钥）。
+  static bool isLegacyToken(String token) {
+    try {
+      final d = base64Url.decode(_padBase64(token));
+      return d.isNotEmpty && d[0] == _v1;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ==================== v1 密钥预热（只在迁移期间用） ====================
 
   static String _cacheKeyFor(Uint8List salt, int iterations) =>
       '${base64Url.encode(salt)}|$iterations';
 
-  Uint8List _deriveKey(Uint8List salt, int iterations) {
+  Uint8List _deriveLegacyKey(Uint8List salt, int iterations) {
     final cacheKey = _cacheKeyFor(salt, iterations);
     final cached = _keyCache[cacheKey];
     if (cached != null) return cached;
@@ -75,12 +215,8 @@ class VaultCipher {
     return kdf.process(Uint8List.fromList(utf8.encode(password)));
   }
 
-  /// 后台预热：在独立 isolate 里把 [params] 里各不同盐对应的密钥派生好并写入缓存，
+  /// 后台预热：在独立 isolate 里把 [params] 里各不同盐对应的 v1 密钥派生好，
   /// 使随后的 [decrypt] 直接命中缓存、不再阻塞 UI 线程。
-  ///
-  /// 单条 token 各自带盐，同一会话里往往有若干个不同的盐（迁移批次 + 各次新增），
-  /// 每个盐首次解密都要跑一次 ~100ms 的 PBKDF2；解锁后调用本方法一次性预热，
-  /// 即可消除"进入软件后前几次复制明显卡顿"的问题。
   Future<void> warmUp(Iterable<({Uint8List salt, int iterations})> params) async {
     final waits = <Future<void>>[];
     final pending = <({Uint8List salt, int iterations, String cacheKey})>[];
@@ -136,8 +272,8 @@ class VaultCipher {
         () => [for (final j in jobs) _pbkdf2(password, j.salt, j.iterations)],
       );
 
-  /// 为一批密文 token 预热密钥：解析出各自的盐，去重后一次性在后台派生好。
-  /// 查询路径在解密前调它，保证之后的 [decrypt] 全部命中缓存。
+  /// 为一批 v1 密文预热密钥：解析出各自的盐，去重后一次性在后台派生好。
+  /// v2 密文不需要预热（库密钥现成的），会被跳过。
   Future<void> warmUpForTokens(Iterable<String?> tokens) {
     final params = <({Uint8List salt, int iterations})>[];
     for (final t in tokens) {
@@ -149,38 +285,28 @@ class VaultCipher {
     return warmUp(params);
   }
 
-  /// 预热本会话写入用的密钥（[encrypt] 会用到）。换主密钥时先调它，
-  /// 之后整库重加密就不会在 UI 线程上跑 PBKDF2。
-  Future<void> warmUpWriteKey() =>
-      warmUp([(salt: _writeSalt, iterations: _iterations)]);
-
-  /// 该 token 的密钥是否已在缓存里（解它不会触发 PBKDF2）。
-  /// 整库重加密用它兜底：预热漏掉的记录直接跳过，绝不在 UI 线程上补派生。
+  /// 解这条密文要用的密钥是否已就绪（解它不会触发 PBKDF2）。
+  /// v2 密文恒为 true——库密钥不需要派生。
   bool isKeyWarm(String token) {
+    if (!isLegacyToken(token)) return hasVaultKey;
     final p = tokenParams(token);
     if (p == null) return false;
     return _keyCache.containsKey(_cacheKeyFor(p.salt, p.iterations));
   }
 
-  /// 写入用的密钥是否已在缓存里（[encrypt] 不会触发 PBKDF2）。
-  bool get isWriteKeyWarm =>
-      _keyCache.containsKey(_cacheKeyFor(_writeSalt, _iterations));
-
-  /// 该 token 是否已经用本会话的写盐 + 当前迭代次数加密。
-  /// 用于挑出"还在用老盐"的记录做收敛重加密。
-  bool usesWriteParams(String token) {
+  /// 该 v1 密文是否已经用本会话的写盐 + 当前迭代次数加密。
+  bool usesLegacyWriteParams(String token) {
     final p = tokenParams(token);
     if (p == null || p.iterations != _iterations) return false;
-    if (p.salt.length != _writeSalt.length) return false;
+    if (p.salt.length != _legacyWriteSalt.length) return false;
     for (var i = 0; i < p.salt.length; i++) {
-      if (p.salt[i] != _writeSalt[i]) return false;
+      if (p.salt[i] != _legacyWriteSalt[i]) return false;
     }
     return true;
   }
 
-  /// 与 [decrypt] 相同，但该 token 的密钥未缓存时先在后台 isolate 派生，
-  /// UI 线程零 PBKDF2。解锁后预热尚未完成、或重新解锁后缓存刚清空时，
-  /// 复制等用户操作走这里可保证不掉帧。
+  /// 与 [decrypt] 相同，但 v1 密文的密钥未缓存时先在后台 isolate 派生，
+  /// UI 线程零 PBKDF2。
   Future<String> decryptAsync(String token) async {
     final params = tokenParams(token);
     if (params != null &&
@@ -194,13 +320,14 @@ class VaultCipher {
     return decrypt(token);
   }
 
-  /// 从 token 里解析出（盐, 迭代次数），用于 [warmUp] 枚举所有需要预热的盐。
-  /// 非本格式（旧数据/坏数据）返回 null。
+  /// 从 **v1** token 里解析出（盐, 迭代次数）。v2 / keyring / 坏数据返回 null。
   static ({Uint8List salt, int iterations})? tokenParams(String token) {
     try {
       final data = base64Url.decode(_padBase64(token));
-      if (data.length < 1 + 1 + 4 + 1 + _saltLen + _nonceLen + 16) return null;
-      if (data[0] != _version) return null;
+      if (data.length < 1 + 1 + 4 + 1 + _saltLen + _nonceLen + _tagLen) {
+        return null;
+      }
+      if (data[0] != _v1) return null;
       var o = 1;
       if (data[o++] != _kdfPbkdf2Sha256) return null;
       final iterations = _readU32be(data, o);
@@ -216,28 +343,40 @@ class VaultCipher {
     }
   }
 
-  /// 加密明文，返回 base64url token（始终用最新格式）。
+  // ==================== 记录加解密 ====================
+
+  /// 加密明文。有库密钥就写 v2（不带盐、零 PBKDF2）；还没迁移则退回 v1。
   String encrypt(String plaintext) {
-    final key = _deriveKey(_writeSalt, _iterations);
+    final input = Uint8List.fromList(utf8.encode(plaintext));
     final nonce = _randomBytes(_nonceLen);
-    final ct = _gcm(
-      forEncryption: true,
-      key: key,
-      nonce: nonce,
-      input: Uint8List.fromList(utf8.encode(plaintext)),
-    );
+    final vk = _vaultKey;
+    if (vk != null) {
+      final ct = _gcm(
+        forEncryption: true,
+        key: vk,
+        nonce: nonce,
+        input: input,
+      );
+      final out = BytesBuilder()
+        ..addByte(_v2)
+        ..add(nonce)
+        ..add(ct);
+      return base64Url.encode(out.toBytes());
+    }
+    final key = _deriveLegacyKey(_legacyWriteSalt, _iterations);
+    final ct = _gcm(forEncryption: true, key: key, nonce: nonce, input: input);
     final out = BytesBuilder()
-      ..addByte(_version)
+      ..addByte(_v1)
       ..addByte(_kdfPbkdf2Sha256)
       ..add(_u32be(_iterations))
-      ..addByte(_writeSalt.length)
-      ..add(_writeSalt)
+      ..addByte(_legacyWriteSalt.length)
+      ..add(_legacyWriteSalt)
       ..add(nonce)
       ..add(ct);
     return base64Url.encode(out.toBytes());
   }
 
-  /// 解密 token；主密钥错误或数据损坏抛 [CryptoException]。
+  /// 解密 token（v1 / v2 自动分辨）；主密钥错误或数据损坏抛 [CryptoException]。
   String decrypt(String token) {
     Uint8List data;
     try {
@@ -245,11 +384,34 @@ class VaultCipher {
     } on FormatException {
       throw const CryptoException('token 不是合法 base64url');
     }
-    if (data.length < 1 + 1 + 4 + 1 + _saltLen + _nonceLen + 16) {
+    if (data.isEmpty) {
+      throw const CryptoException('token 为空');
+    }
+    return switch (data[0]) {
+      _v2 => _decryptV2(data),
+      _v1 => _decryptV1(data),
+      final v => throw CryptoException('未知的 token 版本: 0x${v.toRadixString(16)}'),
+    };
+  }
+
+  String _decryptV2(Uint8List data) {
+    final vk = _vaultKey;
+    if (vk == null) {
+      // 库密钥还没拿到（老库尚未迁移就读到了新格式的记录，多半是别的设备
+      // 迁移完同步过来的）：等 keyring 一并同步过来就能解开，别报"数据损坏"。
+      throw const CryptoException('缺少库密钥，无法解密（keyring 尚未同步到本机）');
+    }
+    if (data.length < 1 + _nonceLen + _tagLen) {
       throw const CryptoException('token 长度不合法');
     }
-    if (data[0] != _version) {
-      throw CryptoException('未知的 token 版本: 0x${data[0].toRadixString(16)}');
+    final nonce = Uint8List.fromList(data.sublist(1, 1 + _nonceLen));
+    final ct = Uint8List.fromList(data.sublist(1 + _nonceLen));
+    return _finish(key: vk, nonce: nonce, ct: ct);
+  }
+
+  String _decryptV1(Uint8List data) {
+    if (data.length < 1 + 1 + 4 + 1 + _saltLen + _nonceLen + _tagLen) {
+      throw const CryptoException('token 长度不合法');
     }
     var o = 1;
     final kdfId = data[o++];
@@ -259,7 +421,7 @@ class VaultCipher {
     final iterations = _readU32be(data, o);
     o += 4;
     final saltLen = data[o++];
-    if (o + saltLen + _nonceLen + 16 > data.length) {
+    if (o + saltLen + _nonceLen + _tagLen > data.length) {
       throw const CryptoException('token 字段越界');
     }
     final salt = Uint8List.fromList(data.sublist(o, o + saltLen));
@@ -267,8 +429,14 @@ class VaultCipher {
     final nonce = Uint8List.fromList(data.sublist(o, o + _nonceLen));
     o += _nonceLen;
     final ct = Uint8List.fromList(data.sublist(o));
+    return _finish(key: _deriveLegacyKey(salt, iterations), nonce: nonce, ct: ct);
+  }
 
-    final key = _deriveKey(salt, iterations);
+  static String _finish({
+    required Uint8List key,
+    required Uint8List nonce,
+    required Uint8List ct,
+  }) {
     final Uint8List plain;
     try {
       plain = _gcm(forEncryption: false, key: key, nonce: nonce, input: ct);

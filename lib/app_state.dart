@@ -19,7 +19,17 @@ class AppState extends ChangeNotifier {
     required this.credentials,
     required this.sync,
     required this.compactor,
-  });
+  }) {
+    // 开了云同步时，迁移要等这台机器和远端对齐之后才敢做（见 [_readyToMigrate]）。
+    // 解锁那一刻往往还没拉完，所以同步状态一变就再判一次。
+    sync.addListener(_onSyncChanged);
+  }
+
+  @override
+  void dispose() {
+    sync.removeListener(_onSyncChanged);
+    super.dispose();
+  }
 
   final VaultRepository vault;
   final AppSettings settings;
@@ -41,21 +51,40 @@ class AppState extends ChangeNotifier {
 
   /// 解锁：主密钥正确返回 true，错误返回 false（不进入主界面）。
   ///
-  /// 判定方式是"库里至少有一条记录能被这把密钥解开"——主密钥本身不落盘，
-  /// 也就没有校验串可比对。空库（或全是无密文的记录）时任何主密钥都算合法。
+  /// 迁移过的库走 keyring：拿主密钥拆开那一小块取出库密钥，**恒定 1 次 PBKDF2**，
+  /// 而且 GCM 认证标签直接判定密钥对不对，不用再拿"有没有一条记录解得开"去猜。
+  /// 之后解密任何记录都是纯 AES，零 PBKDF2——库里有 100 条还是 1 万条都一样快。
   ///
-  /// 只在**主流盐**上派生一次密钥就够判定（正确密钥走这条快路，一次
-  /// PBKDF2 ~0.2s/桌面）。以前这里等的是"全部盐都预热完"，老库里一次会话
-  /// 一个盐、攒了十几二十个盐，Windows 上就要卡十几秒才能进去。
-  /// 剩下的盐挪到进主界面之后在后台补，并顺手把它们收敛掉（见 [_warmRestAndConverge]）。
+  /// 还没迁移的老库走 [_unlockLegacy]。
   Future<bool> unlock(String masterPassword) async {
-    final tokens = _activeTokens();
-    final c = VaultCipher(masterPassword, writeSalt: _dominantSalt(tokens));
-    if (!await _verify(c, tokens)) return false;
-    _cipher = c;
+    final blob = vault.keyring;
+    if (blob == null) return _unlockLegacy(masterPassword);
+
+    Uint8List? vk;
+    try {
+      vk = await VaultCipher.unwrapVaultKeyAsync(masterPassword, blob);
+    } catch (_) {
+      // isolate 起不来（极少数平台/沙箱）就地兜底，慢一点也得让人进得去。
+      vk = VaultCipher.unwrapVaultKey(masterPassword, blob);
+    }
+    if (vk == null) return false; // 主密钥不对，精确判定
+    _cipher = VaultCipher(masterPassword, vaultKey: vk);
     notifyListeners();
-    _converging = _warmRestAndConverge(c);
-    unawaited(_converging);
+    _scheduleMigration(); // 还有 v1 老记录就后台转
+    return true;
+  }
+
+  /// 老库（还没有 keyring）的解锁：主密钥不落盘，也没有 keyring 可比对，
+  /// 只能拿"库里至少有一条记录能被这把密钥解开"来判定。
+  Future<bool> _unlockLegacy(String masterPassword) async {
+    final tokens = _activeTokens();
+    final probe =
+        VaultCipher(masterPassword, legacyWriteSalt: _dominantSalt(tokens));
+    if (!await _verifyLegacy(probe, tokens)) return false;
+    _cipher = probe;
+    notifyListeners();
+    // 主密钥验过了 → 立刻建库密钥并开始迁移（条件不满足就留到对齐之后）。
+    _scheduleMigration();
     return true;
   }
 
@@ -68,11 +97,14 @@ class AppState extends ChangeNotifier {
   /// 至少能解开一条 → 主密钥正确。先只试主流盐那批（1 次 PBKDF2），
   /// 试不通才把剩下的盐补齐再判一次——那是密钥真的错了或者库里混了多把
   /// 密钥的少数情况，慢一点可以接受。
-  Future<bool> _verify(VaultCipher c, List<String> tokens) async {
+  Future<bool> _verifyLegacy(VaultCipher c, List<String> tokens) async {
     if (tokens.isEmpty) return true;
+    // 一条都不是本格式的密文（文件损坏 / 导入了别的东西）：没有可校验的对象，
+    // 放行。否则用户会被永久关在解锁页外面，连导入导出都点不到。
+    if (!tokens.any((t) => VaultCipher.tokenParams(t) != null)) return true;
     final sameSalt = [
       for (final t in tokens)
-        if (c.usesWriteParams(t)) t,
+        if (c.usesLegacyWriteParams(t)) t,
     ];
     if (sameSalt.isNotEmpty) {
       await _warm(c, sameSalt);
@@ -102,34 +134,72 @@ class AppState extends ChangeNotifier {
     return false;
   }
 
-  /// 后台盐收敛任务；换主密钥前要等它跑完，否则两边同时重写同一批记录。
-  Future<void>? _converging;
+  // ==================== 迁移到库密钥（一次性） ====================
 
-  /// 仅用于测试：等待解锁后的后台盐收敛跑完。
+  /// 后台迁移任务；换主密钥前要等它跑完，否则两边同时重写同一批记录。
+  /// 非 null 表示本次会话已经起过（跑完也不再重复起）。
+  Future<void>? _migrating;
+
+  /// 仅用于测试：等待后台迁移跑完（没起过时为 null）。
   @visibleForTesting
-  Future<void>? get pendingMaintenance => _converging;
+  Future<void>? get pendingMaintenance => _migrating;
 
-  /// 进主界面之后的后台收尾：把剩余的盐预热掉，再把它们统一重加密成写盐。
-  /// 收敛一次之后库里只剩一个盐，之后每次解锁都只需要一次 PBKDF2。
-  Future<void> _warmRestAndConverge(VaultCipher c) async {
-    if (_activeTokens().every(c.usesWriteParams)) return;
+  void _onSyncChanged() => _scheduleMigration();
+
+  /// 起一次后台迁移；条件不满足就什么都不做，留到下次（同步完成 / 下次启动）。
+  void _scheduleMigration() {
+    if (_migrating != null) return; // 本会话已经起过
+    final c = _cipher;
+    if (c == null) return;
+    if (c.hasVaultKey && !_hasLegacyRecords()) return; // 已经全是 v2 了
+    if (!_readyToMigrate()) return;
+    final f = _migrate(c);
+    _migrating = f;
+    unawaited(f);
+  }
+
+  bool _hasLegacyRecords() =>
+      _activeTokens().any(VaultCipher.isLegacyToken);
+
+  /// 迁移要么新建 keyring、要么以 ts=now 重写记录，按"时间戳新的胜出"的合并
+  /// 规则，它会盖过远端**还没拉下来**的更新；更要命的是两台机器各自建一把库
+  /// 密钥、各自把记录转过去，合并之后只有一把 keyring 活下来，另一台转过的
+  /// 记录就全废了。所以开了云同步必须先和远端对齐过一次才敢动手；没开云同步
+  /// 的本地库随便迁。（迁移只是优化，晚一轮不影响任何功能。）
+  bool _readyToMigrate() {
+    if (!settings.cloudEnabled) return true;
+    if (sync.status.state == SyncState.working) return false;
+    return sync.status.lastSyncAt != null;
+  }
+
+  Future<void> _migrate(VaultCipher c) async {
     if (!identical(_cipher, c)) return; // 期间被锁定/换过密钥就别写了
     try {
-      // reencrypt 内部会把要动的记录的密钥先在后台派生好。
-      await vault.reencrypt(from: c, to: c, onlyStale: true);
+      var cipher = c;
+      if (!cipher.hasVaultKey) {
+        // 迁移前先把原件留一份，万一中途出岔子人手上还有迁移前的日志。
+        await vault.backupBeforeMigration();
+        final vk = VaultCipher.newVaultKey();
+        final blob = await cipher.wrapVaultKeyWithOwnPassword(vk);
+        if (!identical(_cipher, c)) return;
+        await vault.writeKeyring(blob);
+        cipher = cipher.upgraded(vk);
+        _cipher = cipher;
+        notifyListeners();
+      }
+      await vault.migrateToVaultKey(cipher);
     } catch (_) {
-      // 收敛只是优化，失败不影响使用，下次启动再试。
+      // 迁移只是优化，失败不影响使用，下次启动再试。
     }
   }
 
-  /// 挑库里用得最多的那个盐当本会话写盐。
+  /// 挑库里用得最多的那个盐当本会话的 v1 写盐（迁移完就用不上了）。
   ///
-  /// 以前每个 VaultCipher 实例都随机生成写盐，于是"每有一次会话写入就多一个
+  /// 老版本每个 VaultCipher 实例都随机生成写盐，于是"每有一次会话写入就多一个
   /// 盐"，解锁预热要跑的 PBKDF2 次数随使用时间线性增长。复用最主流的那个盐
-  /// 能让库随使用逐步收敛到单盐，预热稳定在 1 次。老记录各自带盐，照样解得开。
+  /// 能把预热压回 1 次。老记录各自带盐，照样解得开。
   ///
-  /// 计数相同时按盐的字节序取最小的那个——多设备各自收敛时要选出同一个盐，
-  /// 否则 A 收敛成盐 1、B 收敛成盐 2，同步过去互相判定为"陈旧"来回重写。
+  /// 计数相同时按盐的字节序取最小的那个——多设备各自处理时要选出同一个盐。
   static Uint8List? _dominantSalt(List<String> tokens) {
     final counts = <String, ({Uint8List salt, int n})>{};
     for (final t in tokens) {
@@ -152,31 +222,54 @@ class AppState extends ChangeNotifier {
     return best!.salt;
   }
 
-  /// 更换主密钥：用新密钥把整库重新加密一遍。
+  // ==================== 换主密钥 ====================
+
+  /// 更换主密钥：拿新主密钥把**同一把库密钥**重新包一遍，只重写 keyring 那一行。
+  /// 记录一条都不用动，所以是 O(1)，几毫秒的事。
   ///
-  /// 以前这里只换了会话密钥、不动已有密文，于是换完之后老条目仍归旧密钥、
-  /// 新写入归新密钥，同一个库里混着两把钥匙谁也打不全。现在整库重写，
-  /// 换完之后库里只有新密钥一把（旧密钥解不开的条目原样保留并如实上报）。
-  Future<ReencryptReport> rekey(String newMasterPassword) async {
+  /// 换之前会先把剩下的 v1 老记录转完——不转的话它们只认老主密钥，换完就再也
+  /// 读不出来了。老主密钥都解不开的记录（比如曾经用错密钥存进去的）原样保留，
+  /// 并在 [RekeyResult.leftBehind] 里如实上报。
+  ///
+  /// 库还没迁移（开了云同步但本次会话还没跟远端对齐）时返回
+  /// [RekeyResult.needsSync]，让用户先同步一次——这时候换密钥要重写整库，
+  /// 和别的设备撞上就会把数据搅乱。
+  Future<RekeyResult> rekey(String newMasterPassword) async {
     try {
-      await _converging; // 等后台收敛落地，避免两条写路径互相覆盖
+      await _migrating; // 等后台迁移落地，避免两条写路径互相覆盖
     } catch (_) {
-      // 收敛失败不影响换密钥
+      // 迁移失败不影响换密钥
     }
     final from = _cipher;
-    final to = VaultCipher(newMasterPassword); // 新密钥用全新随机盐
-    await to.warmUpWriteKey();
-    var report = const ReencryptReport(converted: 0, skipped: 0);
-    if (from != null) {
-      report = await vault.reencrypt(from: from, to: to, onlyStale: false);
-    }
-    _cipher = to;
+    if (from == null) throw StateError('未解锁');
+    if (!from.hasVaultKey) return const RekeyResult.needsSync();
+
+    final report = await vault.migrateToVaultKey(from);
+    final vk = from.vaultKey!;
+    final blob = await VaultCipher.wrapVaultKeyAsync(newMasterPassword, vk);
+    await vault.writeKeyring(blob);
+    _cipher = VaultCipher(newMasterPassword, vaultKey: vk);
     notifyListeners();
-    return report;
+    return RekeyResult.ok(report.skipped);
   }
 
   void lock() {
     _cipher = null;
+    _migrating = null; // 下次解锁（可能换了密钥）要能重新起迁移
     notifyListeners();
   }
+}
+
+/// 换主密钥的结果。
+class RekeyResult {
+  /// false = 没换成，需要先同步一次（库还没迁移到库密钥）。
+  final bool ok;
+
+  /// 老主密钥也解不开、原样留下的记录条数（换完之后它们仍只认老主密钥）。
+  final int leftBehind;
+
+  const RekeyResult.ok(this.leftBehind) : ok = true;
+  const RekeyResult.needsSync()
+      : ok = false,
+        leftBehind = 0;
 }

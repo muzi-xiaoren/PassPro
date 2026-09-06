@@ -632,17 +632,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get masterKeyWrong => 'Falscher Hauptschlüssel';
 
   @override
-  String rekeyWarning(int count) {
-    return 'Damit werden alle $count Einträge mit dem neuen Hauptschlüssel neu verschlüsselt. Andere Geräte müssen ebenfalls auf den neuen Schlüssel wechseln.';
-  }
+  String get rekeyWarning =>
+      'Der neue Hauptschlüssel gilt sofort. Andere Geräte lassen sich bis zur Synchronisierung noch mit dem alten Schlüssel öffnen.';
 
   @override
-  String get rekeyWorking => 'Wird neu verschlüsselt …';
+  String get rekeyNeedsSync =>
+      'Bitte einmal synchronisieren, bevor Sie den Hauptschlüssel ändern';
 
   @override
-  String rekeyDone(int count) {
-    return 'Hauptschlüssel geändert; $count Einträge neu verschlüsselt';
-  }
+  String get rekeyWorking => 'Wird verarbeitet …';
 
   @override
   String rekeySkipped(int count) {

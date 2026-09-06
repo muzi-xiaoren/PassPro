@@ -13,6 +13,26 @@ class MemoryIndex extends ChangeNotifier {
   /// 仅密文索引：不需要主密钥即可加载。明文密码只在调用 [decryptPassword] 时即时解密。
   final Map<String, LogRecord> _records = {};
 
+  /// keyring 那一条单独放，**不进 [_records]**：这样搜索/列表/计数/导出/迁移
+  /// 这些遍历 [activeRecords] 的地方一个都不用改，也绝不会把它当成密码条目。
+  LogRecord? _keyringRecord;
+
+  /// 当前 keyring 串（用主密钥包起来的库密钥）；老库还没迁移时为 null。
+  String? get keyring {
+    final ct = _keyringRecord?.encryptedPassword;
+    return (ct == null || ct.isEmpty) ? null : ct;
+  }
+
+  LogRecord? get keyringRecord => _keyringRecord;
+
+  /// 返回 true 表示这行是 keyring，已单独收好，不该再进活记录表。
+  bool _takeKeyring(LogRecord r) {
+    if (r.id != kKeyringRecordId) return false;
+    // DEL 一律忽略：老版本把它当普通条目、用户手滑删掉的话，整库就再也打不开了。
+    if (r.op != LogOp.delete) _keyringRecord = r;
+    return true;
+  }
+
   int get totalLineCount => _scannedLines;
   int _scannedLines = 0;
 
@@ -27,8 +47,10 @@ class MemoryIndex extends ChangeNotifier {
   /// 用日志记录 replay 出最新状态。同 id 后写覆盖前写；DEL 移除。
   void replay(List<LogRecord> log) {
     _records.clear();
+    _keyringRecord = null;
     _scannedLines = log.length;
     for (final r in log) {
+      if (_takeKeyring(r)) continue;
       switch (r.op) {
         case LogOp.add:
         case LogOp.update:
@@ -43,6 +65,10 @@ class MemoryIndex extends ChangeNotifier {
   /// 把一条新追加的日志应用到内存（不重置扫描计数）。
   void apply(LogRecord r) {
     _scannedLines += 1;
+    if (_takeKeyring(r)) {
+      notifyListeners();
+      return;
+    }
     switch (r.op) {
       case LogOp.add:
       case LogOp.update:
@@ -58,6 +84,7 @@ class MemoryIndex extends ChangeNotifier {
     var n = 0;
     for (final r in records) {
       n += 1;
+      if (_takeKeyring(r)) continue;
       switch (r.op) {
         case LogOp.add:
         case LogOp.update:

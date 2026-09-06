@@ -41,6 +41,14 @@ class PasswordEntry {
 /// 设计取舍：website/username 保持明文（便于 git diff 与冲突合并），密码字段为密文。
 enum LogOp { add, update, delete }
 
+/// keyring（用主密钥包起来的库密钥）作为一条 id 固定的普通记录存在同一个日志里。
+///
+/// 为什么不另起一种行类型：老版本的 PassPro 解析不认识的 op 会直接跳过整行，
+/// 一旦它做了压实/整表重写就会把 keyring 弄丢——而 keyring 丢了整库就永远打不开。
+/// 存成普通记录，老版本会原样保留它（只是在列表里显示成一条空条目）。
+/// 新版本把它从 [MemoryIndex] 的活记录里摘出去，UI 完全看不到，也删不掉。
+const String kKeyringRecordId = '__passpro_keyring__';
+
 class LogRecord {
   final LogOp op;
   final String id;

@@ -150,36 +150,50 @@ class VaultRepository {
     return const QueryResult.invalidKey();
   }
 
-  // ============ 重加密（换主密钥 / 盐收敛） ============
+  // ============ 库密钥 / 迁移到 v2 ============
 
-  /// 用 [to] 重新加密库里的记录：先用 [from] 解开，再用 [to] 的写盐+密钥写回。
+  /// 当前 keyring（用主密钥包起来的库密钥）；老库还没迁移时为 null。
+  String? get keyring => index.keyring;
+
+  /// 写入/更新 keyring。ts=now，合并时新的胜出——换主密钥就落这一行，O(1)。
+  Future<void> writeKeyring(String blob) async {
+    final r = LogRecord(
+      op: LogOp.update,
+      id: kKeyringRecordId,
+      ts: DateTime.now().toUtc(),
+      website: '',
+      username: '',
+      encryptedPassword: blob,
+    );
+    await store.append(r);
+    index.apply(r);
+  }
+
+  /// 迁移前留一份原件：`passwords.log.v1bak`（只留第一份）。
+  Future<String?> backupBeforeMigration() => store.backupOnce('v1bak');
+
+  /// 把还停在 v1 的记录逐条转成 v2（改用库密钥加密，不再带盐、不再跑 PBKDF2）。
   ///
-  /// [onlyStale] = true 时只处理"盐/迭代次数与 [to] 的写参数不一致"的记录，
-  /// 用于把历史遗留的一记录一盐收敛成单盐（老版本每个会话都随机生成写盐，
-  /// 于是解锁时要按盐个数跑 N 次 PBKDF2——用户 Windows 上卡 10s 就是这个）。
-  /// [onlyStale] = false 时整库重加密，用于真正的"更换主密钥"。
+  /// 迁移完之后，解锁只剩"拆 keyring"那一次 PBKDF2，跟库里有多少条无关。
+  /// [c] 解不开的记录（主密钥不对）原样保留并计入 [MigrationReport.skipped]，
+  /// 不会丢数据；写回前会再解一次校验，确保新密文可读才落盘。
   ///
-  /// [from] 解不开的记录原样保留并计入 [ReencryptReport.skipped]，不会丢数据；
-  /// 写回前会再解一次校验，确保新密文可读才落盘。
-  ///
-  /// 所需密钥在本方法内先统一预热；预热不到的记录直接跳过——重加密是后台
+  /// 所需的 v1 密钥在本方法内先统一后台预热；预热不到的直接跳过——迁移是后台
   /// 维护动作，绝不能自己在 UI 线程上补跑 PBKDF2（那正是卡死的老毛病）。
-  Future<ReencryptReport> reencrypt({
-    required VaultCipher from,
-    required VaultCipher to,
-    required bool onlyStale,
-  }) async {
+  Future<MigrationReport> migrateToVaultKey(VaultCipher c) async {
+    if (!c.hasVaultKey) {
+      return const MigrationReport(converted: 0, skipped: 0);
+    }
     final targets = [
       for (final r in index.activeRecords.toList(growable: false))
         if (r.encryptedPassword case final ct?)
-          if (ct.isNotEmpty && !(onlyStale && to.usesWriteParams(ct))) r,
+          if (ct.isNotEmpty && VaultCipher.isLegacyToken(ct)) r,
     ];
     if (targets.isEmpty) {
-      return const ReencryptReport(converted: 0, skipped: 0);
+      return const MigrationReport(converted: 0, skipped: 0);
     }
     try {
-      await from.warmUpForTokens([for (final r in targets) r.encryptedPassword]);
-      await to.warmUpWriteKey();
+      await c.warmUpForTokens([for (final r in targets) r.encryptedPassword]);
     } catch (_) {
       // 预热失败就靠下面的 isKeyWarm 兜底，本轮能转多少转多少。
     }
@@ -187,23 +201,30 @@ class VaultRepository {
     final fresh = <LogRecord>[];
     var skipped = 0;
     final now = DateTime.now().toUtc();
-    for (final r in targets) {
-      final ct = r.encryptedPassword!;
-      if (!from.isKeyWarm(ct) || !to.isWriteKeyWarm) {
+    for (final snapshot in targets) {
+      // 快照到这里隔着预热的那几秒 await：期间用户可能改了/删了记录，同步也
+      // 可能整表 replay 过。一律拿索引里的**当前版本**来转，绝不能用快照里的
+      // 老内容盖回去——那等于把用户刚存的改动或远端的更新悄悄回滚。
+      final r = index.get(snapshot.id);
+      if (r == null) continue; // 期间被删了：别用 UPD 把它复活
+      final ct = r.encryptedPassword;
+      if (ct == null || ct.isEmpty) continue;
+      if (!VaultCipher.isLegacyToken(ct)) continue; // 期间已经是 v2 了
+      if (!c.isKeyWarm(ct)) {
         skipped++;
         continue;
       }
       final String plain;
       try {
-        plain = from.decrypt(ct);
+        plain = c.decrypt(ct);
       } on CryptoException {
         skipped++;
         continue;
       }
       final String next;
       try {
-        next = to.encrypt(plain);
-        if (to.decrypt(next) != plain) {
+        next = c.encrypt(plain);
+        if (c.decrypt(next) != plain) {
           skipped++;
           continue;
         }
@@ -224,7 +245,7 @@ class VaultRepository {
       await store.appendAll(fresh);
       index.applyAll(fresh);
     }
-    return ReencryptReport(converted: fresh.length, skipped: skipped);
+    return MigrationReport(converted: fresh.length, skipped: skipped);
   }
 
   // ============ 本地导入 / 导出 ============
@@ -317,11 +338,11 @@ class VaultRepository {
   }
 }
 
-/// 重加密结果：成功换新密文的条数与解不开被跳过的条数。
-class ReencryptReport {
+/// 迁移结果：成功转成 v2 的条数与解不开被跳过的条数。
+class MigrationReport {
   final int converted;
   final int skipped;
-  const ReencryptReport({required this.converted, required this.skipped});
+  const MigrationReport({required this.converted, required this.skipped});
   bool get didNothing => converted == 0 && skipped == 0;
 }
 

@@ -627,17 +627,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get masterKeyWrong => 'Wrong master key';
 
   @override
-  String rekeyWarning(int count) {
-    return 'This will re-encrypt all $count entries with the new master key. Other devices must switch to the new key as well.';
-  }
+  String get rekeyWarning =>
+      'The new master key takes effect immediately. Other devices can still be opened with the old key until they sync.';
 
   @override
-  String get rekeyWorking => 'Re-encrypting…';
+  String get rekeyNeedsSync => 'Sync once before changing the master key';
 
   @override
-  String rekeyDone(int count) {
-    return 'Master key changed; $count entries re-encrypted';
-  }
+  String get rekeyWorking => 'Working…';
 
   @override
   String rekeySkipped(int count) {

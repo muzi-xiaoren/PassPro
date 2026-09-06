@@ -12,7 +12,12 @@ A cross-platform local password manager.
 
 ## Design highlights
 
-- **Encryption**: SHA-256 derivation + Fernet symmetric encryption
+- **Encryption**: two-layer keys. Records are encrypted with a random vault key
+  (AES-256-GCM); the vault key itself is wrapped with the master key via
+  PBKDF2-HMAC-SHA256 (100k iterations) into a small keyring kept in the same log.
+  Unlocking therefore costs exactly one PBKDF2 no matter how many entries you have,
+  and changing the master key rewrites only the keyring line — no record is touched.
+  The legacy per-record-salt format is still readable and is migrated on first unlock
 - **Storage**: append-only line-based log (one operation per line) + in-memory index, all CRUD is O(1), one-time replay on startup
 - **Compaction**: triggered when the amplification ratio hits a threshold or by a manual button, folding "operation history" into a "latest snapshot"
 - **Sync**: optional; supports GitHub, Gitee, and WebDAV / Jianguoyun, using **Primary + Mirror** mode
@@ -49,7 +54,7 @@ PassPro/
 │   ├── main.dart                 # entry point
 │   ├── app_state.dart            # global state + master key
 │   ├── crypto/
-│   │   └── fernet_crypto.dart    # Fernet-compatible implementation
+│   │   └── vault_cipher.dart     # vault key + keyring + AES-256-GCM
 │   ├── models/
 │   │   └── password_entry.dart   # PasswordEntry + LogRecord
 │   ├── storage/

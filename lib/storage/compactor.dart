@@ -29,14 +29,19 @@ class Compactor {
     final before = await store.sizeBytes();
     final active = index.activeRecords.toList(growable: false);
     final now = DateTime.now().toUtc();
-    final snapshot = active.map((r) => LogRecord(
+    final snapshot = [
+      // keyring 排在最前面：整表重写时绝不能把它丢了，丢了整库就永远打不开。
+      if (index.keyringRecord case final k?) k,
+      for (final r in active)
+        LogRecord(
           op: LogOp.add,
           id: r.id,
           ts: r.ts,
           website: r.website,
           username: r.username,
           encryptedPassword: r.encryptedPassword,
-        ));
+        ),
+    ];
     await store.replaceAll(snapshot);
     index.replay(await store.readAll());
     final after = await store.sizeBytes();

@@ -609,17 +609,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get masterKeyWrong => 'マスターキーが違います';
 
   @override
-  String rekeyWarning(int count) {
-    return '新しいマスターキーで全 $count 件を暗号化し直します。他の端末も新しいキーに切り替える必要があります。';
-  }
+  String get rekeyWarning => '新しいマスターキーはすぐに有効になります。他の端末は同期するまで旧キーで開けます。';
 
   @override
-  String get rekeyWorking => '再暗号化しています…';
+  String get rekeyNeedsSync => 'マスターキーを変更する前に一度同期してください';
 
   @override
-  String rekeyDone(int count) {
-    return 'マスターキーを変更し、$count 件を再暗号化しました';
-  }
+  String get rekeyWorking => '処理しています…';
 
   @override
   String rekeySkipped(int count) {

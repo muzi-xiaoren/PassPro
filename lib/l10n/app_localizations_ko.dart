@@ -609,17 +609,14 @@ class AppLocalizationsKo extends AppLocalizations {
   String get masterKeyWrong => '마스터 키가 올바르지 않습니다';
 
   @override
-  String rekeyWarning(int count) {
-    return '새 마스터 키로 전체 $count개 항목을 다시 암호화합니다. 다른 기기도 새 키로 바꿔야 합니다.';
-  }
+  String get rekeyWarning =>
+      '새 마스터 키가 즉시 적용됩니다. 다른 기기는 동기화 전까지 이전 키로 열 수 있습니다.';
 
   @override
-  String get rekeyWorking => '다시 암호화하는 중…';
+  String get rekeyNeedsSync => '마스터 키를 변경하기 전에 한 번 동기화하세요';
 
   @override
-  String rekeyDone(int count) {
-    return '마스터 키를 변경하고 $count개 항목을 다시 암호화했습니다';
-  }
+  String get rekeyWorking => '처리하는 중…';
 
   @override
   String rekeySkipped(int count) {

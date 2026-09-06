@@ -12,7 +12,10 @@
 
 ## 设计要点
 
-- **加密**：SHA-256 派生 + Fernet 对称加密
+- **加密**：两层密钥。记录用一把随机库密钥做 AES-256-GCM；库密钥由主密钥
+  经 PBKDF2-HMAC-SHA256（10 万次迭代）包成一小块 keyring 存在同一个日志里。
+  于是解锁恒定只跑 1 次 PBKDF2（跟库里有多少条无关），换主密钥只重写 keyring
+  那一行、记录一条不动。老格式（每条密文自带盐）仍能读，首次解锁自动迁移
 - **存储**：append-only 行式日志（一行一个操作）+ 内存索引，CRUD 全部 O(1)，启动一次性 replay
 - **整理**：放大率达到阈值或手动按钮触发 compaction，把"操作历史"折叠成"最新快照"
 - **同步**：可选；支持 GitHub、Gitee、WebDAV / 坚果云，采用 **Primary + Mirror** 模式
@@ -49,7 +52,7 @@ PassPro/
 │   ├── main.dart                 # 入口
 │   ├── app_state.dart            # 全局状态 + 主密钥
 │   ├── crypto/
-│   │   └── fernet_crypto.dart    # Fernet 兼容实现
+│   │   └── vault_cipher.dart     # 库密钥 + keyring + AES-256-GCM
 │   ├── models/
 │   │   └── password_entry.dart   # PasswordEntry + LogRecord
 │   ├── storage/

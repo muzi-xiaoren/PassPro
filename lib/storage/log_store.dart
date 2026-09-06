@@ -71,6 +71,17 @@ class LogStore {
     }
   }
 
+  /// 复制一份当前日志到同目录下的 `passwords.log.<suffix>`，返回它的路径。
+  /// 迁移到新格式前调一次：万一迁移过程中出岔子，用户手上还有迁移前的原件。
+  /// 同名备份已存在就不再覆盖——第一份（真正的迁移前原件）最值钱。
+  Future<String?> backupOnce(String suffix) async {
+    final dest = File('${_file.path}.$suffix');
+    if (await dest.exists()) return null;
+    if (!await _file.exists()) return null;
+    await _file.copy(dest.path);
+    return dest.path;
+  }
+
   /// 用一组新记录原子替换整个日志（compaction / 从远端覆盖时使用）。
   Future<void> replaceAll(Iterable<LogRecord> records) async {
     final tmp = File('${_file.path}.tmp');

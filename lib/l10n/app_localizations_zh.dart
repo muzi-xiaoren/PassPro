@@ -605,17 +605,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get masterKeyWrong => '主密钥错误，请重新输入';
 
   @override
-  String rekeyWarning(int count) {
-    return '将用新主密钥重新加密全部 $count 条记录，其他设备也需要改用新主密钥。';
-  }
+  String get rekeyWarning => '将立即改用新主密钥。其他设备同步到新的密钥信息之前，仍可用旧主密钥打开。';
 
   @override
-  String get rekeyWorking => '正在重新加密…';
+  String get rekeyNeedsSync => '请先同步一次，再更换主密钥';
 
   @override
-  String rekeyDone(int count) {
-    return '已更换主密钥，重新加密 $count 条记录';
-  }
+  String get rekeyWorking => '正在处理…';
 
   @override
   String rekeySkipped(int count) {
