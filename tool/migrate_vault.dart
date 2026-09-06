@@ -21,8 +21,11 @@ const _defaultMacPath =
     'Library/Application Support/com.example.PassPro/PassPro/passwords.log';
 
 Future<int> main(List<String> args) async {
-  final path = args.isNotEmpty
-      ? args.first
+  // --check：只校验主密钥并把每条记录的情况列出来，一个字节都不写。
+  final checkOnly = args.contains('--check');
+  final positional = args.where((a) => !a.startsWith('--')).toList();
+  final path = positional.isNotEmpty
+      ? positional.first
       : '${Platform.environment['HOME']}/$_defaultMacPath';
   final file = File(path);
   if (!file.existsSync()) {
@@ -60,7 +63,7 @@ Future<int> main(List<String> args) async {
   }
   stdout.writeln('总行数 ${raw.length}（坏行 $badLines）｜活记录 ${active.length}');
 
-  if (keyring != null) {
+  if (keyring != null && !checkOnly) {
     stdout.writeln('这个库已经有 keyring 了，不需要再迁移。');
     return 0;
   }
@@ -77,13 +80,24 @@ Future<int> main(List<String> args) async {
   }
   stdout.writeln('待迁移 ${legacy.length} 条，涉及 ${salts.length} 个盐'
       '（老结构下每次解锁都要按盐数跑一遍 PBKDF2）');
-  stdout.writeln('');
-  stdout.writeln('注意：迁移后老版本 PassPro 读不了这个库，所有设备都要升到 1.1.0。');
-  stdout.writeln('如果开了云同步，请先拉取一次再迁移，迁完再推送。');
+  if (!checkOnly) {
+    stdout.writeln('');
+    stdout.writeln('注意：迁移后老版本 PassPro 读不了这个库，所有设备都要升到 1.1.0。');
+    stdout.writeln('如果开了云同步，请先拉取一次再迁移，迁完再推送。');
+  }
   stdout.writeln('');
 
   final password = _readMasterKey();
   if (password == null) return 1;
+  // 只报长度和是否含非 ASCII：够看出"终端把输入截了/串了"，又不泄露密钥本身。
+  final nonAscii = password.runes.any((r) => r > 127);
+  stdout.writeln('读到主密钥：${password.length} 个字符'
+      '${nonAscii ? '（含非 ASCII 字符）' : '（全部是 ASCII）'}');
+
+  if (checkOnly) {
+    _report(active.values.toList(), password);
+    return 0;
+  }
 
   // 校验主密钥：至少要能解开一条老记录。
   final vaultKey = VaultCipher.newVaultKey();
@@ -170,6 +184,54 @@ Future<int> main(List<String> args) async {
       '${skipped > 0 ? '（这些用当前主密钥解不开，原样留着了）' : ''}');
   stdout.writeln('之后解锁只需要拆 keyring 那一次 PBKDF2，跟库里有多少条无关。');
   return 0;
+}
+
+/// 只查不改：把每条记录按盐分组，报告这把主密钥能解开哪些。
+void _report(List<LogRecord> active, String password) {
+  final cipher = VaultCipher(password, vaultKey: VaultCipher.newVaultKey());
+  final groups = <String, List<LogRecord>>{};
+  for (final r in active) {
+    final ct = r.encryptedPassword;
+    final key = (ct == null || ct.isEmpty)
+        ? '<无密文>'
+        : switch (VaultCipher.tokenParams(ct)) {
+            final p? => base64Url.encode(p.salt).substring(0, 8),
+            _ => VaultCipher.isLegacyToken(ct) ? '<v1 但解析不出>' : '<非 v1>',
+          };
+    (groups[key] ??= []).add(r);
+  }
+  final sorted = groups.entries.toList()
+    ..sort((a, b) => b.value.length - a.value.length);
+
+  stdout.writeln('');
+  stdout.writeln('按盐分组（盐取 base64 前 8 位）：');
+  var okTotal = 0;
+  for (final g in sorted) {
+    var ok = 0;
+    for (final r in g.value) {
+      final ct = r.encryptedPassword;
+      if (ct == null || ct.isEmpty) continue;
+      try {
+        cipher.decrypt(ct);
+        ok++;
+      } on CryptoException {
+        // 解不开
+      }
+    }
+    okTotal += ok;
+    stdout.writeln('  盐 ${g.key.padRight(16)} ${g.value.length.toString().padLeft(3)} 条'
+        '  能解开 $ok 条'
+        '  例：${g.value.take(3).map((r) => r.website ?? '?').join('、')}');
+  }
+  stdout.writeln('');
+  stdout.writeln('合计：${active.length} 条里能解开 $okTotal 条。');
+  if (okTotal == 0) {
+    stdout.writeln('');
+    stdout.writeln('一条都解不开，通常是这两种情况之一：');
+    stdout.writeln('  1) 输入被终端截断/串码了——看上面报的字符数对不对得上；');
+    stdout.writeln('  2) 这个库当初就不是用这把主密钥建的。老版本的 PassPro 从来');
+    stdout.writeln('     不校验主密钥，输错也照样放进主界面，所以有可能一直没发现。');
+  }
 }
 
 /// 从终端读主密钥，不回显。
